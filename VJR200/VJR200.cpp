@@ -15,6 +15,7 @@
 #include <shlwapi.h>
 #include <Shlobj.h>
 #include <shellapi.h>
+#include <algorithm>
 #include "JRSystem.h"
 #include "VJR200.h"
 #include "CjrFormat.h"
@@ -42,8 +43,11 @@ const unsigned int RECENT_FILES_NUM = 10;
 const int CJR_FILE_MAX = 65536;
 const int CPU_SPEED_MAX = 1000;
 const int BREAKPOINT_NUM = 12;
+const int RW_BREAKPOINT_NUM = 5;
 const TCHAR* APPDATA_PATH = _T("\\FIND_JR\\VJR200\\");
 const int CEREAL_VER = 1;
+extern const int JUMP_HISTORY_SIZE;
+const int JUMP_HISTORY_SIZE = 24;
 
 // グラフキーボード用テーブル
 const uint8_t g_gcharCode1[][14] = { 
@@ -73,6 +77,9 @@ int g_dramWait = 0;
 bool g_deviceRunning = true;
 int g_debug = -1; // -1 = 通常実行　　1 = ステップ実行　　0 = 停止　　2 = PAUSEを押したとき
 int g_breakPoint[BREAKPOINT_NUM] = {-1, -1,  -1, -1, -1, -1};
+int g_rwBreakPoint[RW_BREAKPOINT_NUM][2] = {0};
+bool g_rwBKEnableR[RW_BREAKPOINT_NUM] = { 0 };
+bool g_rwBKEnableW[RW_BREAKPOINT_NUM] = { 0 };
 bool g_bSoundOn = false;
 bool g_bMemWindow = false;
 bool g_bDisasmWindow = false;
@@ -80,6 +87,12 @@ TCHAR g_strTable[STR_RESOURCE_NUM + 1][256]; // [0]は使わない
 bool g_bForcedJoystick = false;
 int g_vcyncCounter = 0;
 ITapeFormat* g_pTapeFormat;
+std::map<int, std::wstring> g_debugLabel;
+uint16_t g_prePC = 0;
+TCHAR g_JumpHistory[JUMP_HISTORY_SIZE][11] = { 0 };
+int g_JumpHistory_index = 0;
+TCHAR g_RWBreak[10] = { 0 };
+
 JRSystem sys;
 
 // ダイアログ・ini保存項目
@@ -119,7 +132,6 @@ int g_bCmtAddBlank = 1;
 bool g_bRomajiKana = false;
 bool g_bPrinterLed = true;
 bool g_bStatusBar = true;
-std::map<int, std::wstring> g_debugLabel;
 
 static const int STATESAVE_SUBMENU_POS = 15;
 static const int STATELOAD_SUBMENU_POS = 16;
@@ -340,8 +352,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					(wndpl.showCmd != SW_SHOWMINNOACTIVE)) {
 
 					if (++debugDrawCount == 7) { // デバッグ情報はVSYNCの1/6回しか更新しない
-						RECT rect = { 0, 0, 265, 265 };
+						RECT rect = { 0, 0, 265, 265 }; // デバッグウィンドウ内レジスタ表示
 						if (bDebugWindow) InvalidateRect(hWndDebug, &rect, TRUE);
+						rect = { 450, 50, 550, 70 }; // デバッグウィンドウ内breakアドレス表示
+						if (bDebugWindow) InvalidateRect(hWndDebug, &rect, TRUE);
+						rect = { 450, 100, 550, 120 };// デバッグウィンドウ内R/Wアドレス表示
+						if (bDebugWindow) InvalidateRect(hWndDebug, &rect, TRUE);
+
 						if (g_bMemWindow) InvalidateRect(g_pMemWindow->GetHWnd(), NULL, FALSE);
 						if (g_bDisasmWindow) InvalidateRect(g_pDisasmWindow->GetHWnd(), NULL, FALSE);
 						debugDrawCount = 0;
@@ -1524,6 +1541,7 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
 	static HFONT hNewFont;
 	static HWND hWatchList;
+	static HWND hJumpList;
 
 	UINT ctlList[] = { IDC_DEBUG_BREAKPOINT, IDC_DEBUG_BREAKPOINT2, IDC_DEBUG_BREAKPOINT3,
 		IDC_DEBUG_BREAKPOINT4, IDC_DEBUG_BREAKPOINT5, IDC_DEBUG_BREAKPOINT6,
@@ -1534,6 +1552,20 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 		IDC_DEBUG_BPENABLE4, IDC_DEBUG_BPENABLE5, IDC_DEBUG_BPENABLE6,
 		IDC_DEBUG_BPENABLE7, IDC_DEBUG_BPENABLE8, IDC_DEBUG_BPENABLE9,
 		IDC_DEBUG_BPENABLE10, IDC_DEBUG_BPENABLE11, IDC_DEBUG_BPENABLE12 };
+
+	UINT ctlRWBreakList[] = { IDC_DEBUG_RWBREAK1S, IDC_DEBUG_RWBREAK1E,
+		IDC_DEBUG_RWBREAK2S, IDC_DEBUG_RWBREAK2E,
+		IDC_DEBUG_RWBREAK3S, IDC_DEBUG_RWBREAK3E,
+		IDC_DEBUG_RWBREAK4S, IDC_DEBUG_RWBREAK4E,
+		IDC_DEBUG_RWBREAK5S, IDC_DEBUG_RWBREAK5E
+	};
+
+	UINT chkRWBreakButtonlList[] = { IDC_DEBUG_RWBP_R1, IDC_DEBUG_RWBP_W1, 
+		IDC_DEBUG_RWBP_R2, IDC_DEBUG_RWBP_W2,
+		IDC_DEBUG_RWBP_R3, IDC_DEBUG_RWBP_W3,
+		IDC_DEBUG_RWBP_R4, IDC_DEBUG_RWBP_W4,
+		IDC_DEBUG_RWBP_R5, IDC_DEBUG_RWBP_W5
+	};
 
 	switch (msg) {
 	case WM_INITDIALOG:
@@ -1614,6 +1646,19 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 			_T("Courier New"));
 		SendMessage(hWatchList, WM_SETFONT, (WPARAM)hNewFont, (LPARAM)MAKELPARAM(FALSE, 0));
 
+		// ジャンプリスト
+		hJumpList = GetDlgItem(hwnd, IDC_DEBUG_JUMPLIST);
+
+		int idx = g_JumpHistory_index;
+		if (--idx < 0)
+			idx = JUMP_HISTORY_SIZE - 1;
+		for (int i = 0; i < JUMP_HISTORY_SIZE; ++i) {
+			SendMessage(hJumpList, LB_ADDSTRING, 0, (LPARAM)(g_JumpHistory[idx]));
+			if (--idx < 0)
+				idx = JUMP_HISTORY_SIZE - 1;
+		}
+		SendMessage(hJumpList, WM_SETFONT, (WPARAM)hNewFont, (LPARAM)MAKELPARAM(FALSE, 0));
+
 		SetFocus(GetDlgItem(hwnd, IDC_DEBUG_BREAKPOINT));
 
 		hDebugHook = SetWindowsHookEx(WH_KEYBOARD, (HOOKPROC)DebugKeyboardProc, NULL, GetCurrentThreadId());
@@ -1634,14 +1679,23 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 			break;
 		}
 		case IDC_DEBUG_PAUSE:
+		{
 			g_debug = 2;
+			g_RWBreak[0] = _T('\0');
 			break;
+		}
 		case IDC_DEBUG_STEP:
+		{
 			g_debug = 1;
+			g_RWBreak[0] = _T('\0');
 			break;
+		}
 		case IDC_DEBUG_PLAY:
+		{
 			g_debug = -1;
+			g_RWBreak[0] = _T('\0');
 			break;
+		}
 		case IDC_DEBUG_CLEAR:
 		{
 
@@ -1658,7 +1712,7 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 		}
 		case IDC_DEBUG_SET:
 		{
-			TCHAR buff[BREAKPOINT_NUM];
+			TCHAR buff[10];
 
 			for (int i = 0; i < BREAKPOINT_NUM; ++i) {
 				GetDlgItemText(hwnd, ctlList[i], buff, 9);
@@ -1680,6 +1734,91 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 				}
 
 			}
+			break;
+		}
+		case IDC_DEBUG_RWCLEAR:
+		{
+
+			for (int i = 0; i < RW_BREAKPOINT_NUM * 2; ++i) {
+				SetDlgItemText(hwnd, ctlRWBreakList[i], _T(""));
+				g_rwBreakPoint[i / 2][0] = -1;
+				g_rwBreakPoint[i / 2][1] = -1;
+			}
+
+			for (int i = 0; i < RW_BREAKPOINT_NUM * 2; ++i) {
+				CheckDlgButton(hwnd, chkRWBreakButtonlList[i], BST_UNCHECKED);
+			}
+
+			break;
+		}
+		case IDC_DEBUG_RWSET:
+		{
+			TCHAR sbuff[10], ebuff[10];
+			int s_address, e_address;
+			bool isValid = true;
+
+			for (int i = 0; i < RW_BREAKPOINT_NUM * 2; i += 2) {
+				GetDlgItemText(hwnd, ctlRWBreakList[i], sbuff, 9);
+				Rtrim(sbuff);
+				GetDlgItemText(hwnd, ctlRWBreakList[i + 1], ebuff, 9);
+				Rtrim(ebuff);
+
+				if (_tcslen(sbuff) == 0 && _tcslen(ebuff) != 0) {
+					isValid = false;
+				}
+
+				if (isValid) {
+					s_address = CheckAddress(sbuff);
+					if (s_address == -1) {
+						isValid = false;
+					}
+				}
+
+				if (isValid) {
+					e_address = CheckAddress(ebuff);
+					if (e_address == -1) {
+						isValid = false;
+					}
+				}
+
+				if (isValid) {
+					if (e_address != -2 && (s_address > e_address))
+						isValid = false;
+				}
+
+				int j = (int)(i / 2);
+
+				if (isValid) {
+					g_rwBreakPoint[j][0] = s_address;
+					g_rwBreakPoint[j][1] = e_address;
+				}
+				else {
+					SetDlgItemText(hwnd, ctlRWBreakList[i], _T(""));
+					SetDlgItemText(hwnd, ctlRWBreakList[i + 1], _T(""));
+					int j = (int)(i / 2);
+					g_rwBreakPoint[j][0] = -1;
+					g_rwBreakPoint[j][1] = -1;
+				}
+
+
+				// チェックボックス
+				if (IsDlgButtonChecked(hwnd, chkRWBreakButtonlList[i])) {
+					g_rwBKEnableR[j] = true;
+				}
+				else {
+					g_rwBKEnableR[j] = false;
+				}
+				if (IsDlgButtonChecked(hwnd, chkRWBreakButtonlList[i + 1])) {
+					g_rwBKEnableW[j] = true;
+				}
+				else {
+					g_rwBKEnableW[j] = false;
+				}
+			}
+
+			if (!isValid)
+				MessageBeep(MB_ICONEXCLAMATION);
+
 			break;
 		}
 		case IDC_DEBUG_WENTER:
@@ -1854,6 +1993,36 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 			}
 			break;
 		}
+		case IDC_DEBUG_RWBP_R1:
+		case IDC_DEBUG_RWBP_W1:
+		case IDC_DEBUG_RWBP_R2:
+		case IDC_DEBUG_RWBP_W2:
+		case IDC_DEBUG_RWBP_R3:
+		case IDC_DEBUG_RWBP_W3:
+		case IDC_DEBUG_RWBP_R4:
+		case IDC_DEBUG_RWBP_W4:
+		case IDC_DEBUG_RWBP_R5:
+		case IDC_DEBUG_RWBP_W5: 
+		{
+			PostMessage(hwnd, WM_COMMAND, IDC_DEBUG_RWSET, 0);
+			break;
+		}
+		case IDC_DEBUG_RWBREAK1S:
+		case IDC_DEBUG_RWBREAK1E:
+		case IDC_DEBUG_RWBREAK2S:
+		case IDC_DEBUG_RWBREAK2E:
+		case IDC_DEBUG_RWBREAK3S:
+		case IDC_DEBUG_RWBREAK3E:
+		case IDC_DEBUG_RWBREAK4S:
+		case IDC_DEBUG_RWBREAK4E:
+		case IDC_DEBUG_RWBREAK5S:
+		case IDC_DEBUG_RWBREAK5E:
+		{
+			if (HIWORD(wp) == EN_KILLFOCUS) {
+				PostMessage(hwnd, WM_COMMAND, IDC_DEBUG_RWSET, 0);
+			}
+			break;
+		}
 		}
 		return (INT_PTR)TRUE;
 		break;
@@ -1949,15 +2118,19 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 
 		hFontOld = (HFONT)SelectObject(hdc, hFont);
 
+		if (_tcslen(g_RWBreak) != 0){
+			TCHAR s[10];
+			wsprintf(s, _T("%04X"), g_prePC);
+			TextOut(hdc, 460, 50, s, (int)_tcslen(s));
+			TextOut(hdc, 460, 100, g_RWBreak, (int)_tcslen(g_RWBreak));
+		}
+
 		wsprintf(c, _T("PC=%04X   SP=%04X"), pc, sp);
 		TextOut(hdc, OFFSET, 10, c, (int)_tcslen(c));
-		ZeroMemory(c, 40);
 		wsprintf(c, _T("A=%02X   B=%02X   X=%04X"), a, b, x);
 		TextOut(hdc, OFFSET, 25, c, (int)_tcslen(c));
-		ZeroMemory(c, 40);
 		wsprintf(c, _T("CC - - H I N Z V C"));
 		TextOut(hdc, OFFSET, 40, c, (int)_tcslen(c));
-		ZeroMemory(c, 40);
 		wsprintf(c, _T("%02X 1 1 %d %d %d %d %d %d"), cc, (cc & 0x20) ? 1 : 0, (cc & 0x10) ? 1 : 0, (cc & 0x08) ? 1 : 0,
 			(cc & 0x04) ? 1 : 0, (cc & 0x02) ? 1 : 0, (cc & 0x01) ? 1 : 0);
 		TextOut(hdc, OFFSET, 55, c, (int)_tcslen(c));
@@ -3056,5 +3229,52 @@ void SetWatchList()
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// デバックウィンドウのジャンプリスト更新
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void SetJumpList()
+{
+	if (hWndDebug == NULL) return;
+
+	HWND hJumpList = GetDlgItem(hWndDebug, IDC_DEBUG_JUMPLIST);
+
+	// ジャンプリスト
+	SendMessage(hJumpList, WM_SETREDRAW, FALSE, 0);
+	SendMessage(hJumpList, LB_RESETCONTENT, 0, 0);
+	int idx = g_JumpHistory_index;
+	if (--idx < 0)
+		idx = JUMP_HISTORY_SIZE - 1;
+	for (int i = 0; i < JUMP_HISTORY_SIZE; ++i) {
+		SendMessage(hJumpList, LB_ADDSTRING, 0, (LPARAM)(g_JumpHistory[idx]));
+		if (--idx < 0)
+			idx = JUMP_HISTORY_SIZE - 1;
+	}
+	SendMessage(hJumpList, WM_SETREDRAW, TRUE, 0);
+}
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// 入力されたアドレスが正しいかどうかチェック
+//
+// 戻り値　正しければ int型のアドレス、不正なら -1、空欄は -2
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+int CheckAddress(TCHAR* s)
+{
+	Rtrim(s);
+	if (_tcslen(s) == 0)
+		return -2;
+	
+	TCHAR* e;
+	unsigned int address = _tcstol(s, &e, 16);
+
+	if (*e != '\0' || address < 0 || address > 65535) {
+		return -1;
+	}
+	else {
+		return address;
+	}
+}

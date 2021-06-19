@@ -204,10 +204,12 @@ void JRSystem::StepRun()
             pCpu->run(1);
             g_debug = 0;
 			SetWatchList();
+			SetJumpList();
             break;
 		case 2: // PAUSEを押したとき
 			g_debug = 0;
 			SetWatchList();
+			SetJumpList();
 			break;
     }
 

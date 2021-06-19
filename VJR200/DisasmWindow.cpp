@@ -377,16 +377,16 @@ void DisasmWindow::SetOperation(OperationSet* oSet)
 	vector<uint8_t> byteList;
 	wchar_t bytesString[30] = {};
 	
-	opCode = sys.pAddress->ReadByte(curAddress);
+	opCode = sys.pAddress->ReadByteForDebug(curAddress);
 	bytesCount = bytes[opCode];
 	oSet->startAddress = curAddress;
 
 	for (int i = 0; i < bytesCount; ++i)
 	{
 		wchar_t buf[20] = {};
-		wsprintf(buf, L"%02X ", (int)sys.pAddress->ReadByte(curAddress));
+		wsprintf(buf, L"%02X ", (int)sys.pAddress->ReadByteForDebug(curAddress));
 		wcscat(bytesString, buf);
-		byteList.push_back(sys.pAddress->ReadByte(curAddress));
+		byteList.push_back(sys.pAddress->ReadByteForDebug(curAddress));
 		++curAddress;
 	}
 	wcscat(bytesString, L"          ");

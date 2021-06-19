@@ -92,6 +92,7 @@ TODO:
 #define LOG(x)  do { if (VERBOSE) logerror x; } while (0)
 
 extern JRSystem sys;
+extern uint16_t g_prePC;
 
 CEREAL_CLASS_VERSION(m6800_cpu_device, CEREAL_VER);
 
@@ -408,7 +409,7 @@ const uint8_t m6800_cpu_device::flags8d[256]= /* decrement */
 #define IDXWORD(w) {INDEXED;w.d=RM16(EAD);}
 
 /* Macros for branch instructions */
-#define BRANCH(f) {IMMBYTE(t);if(f){PC+=SIGNED(t);}}
+#define BRANCH(f) {auto oldPC = PC;IMMBYTE(t);if(f){PC+=SIGNED(t);AddJumpList(PC);}}
 #define NXORV  ((CC&0x08)^((CC&0x02)<<2))
 
 #define M6800_WAI       8           /* set when WAI is waiting for an interrupt */
@@ -648,6 +649,7 @@ int m6800_cpu_device::run(int steps)
 			g_dramWait = 0;
 			pPPC = pPC;
 			ireg = M_RDOP(PCD);
+			g_prePC = PC;
 			PC++;
             (this->*m_insn[ireg])();
             c = m_cycles[ireg] + g_dramWait;
@@ -669,6 +671,7 @@ int m6800_cpu_device::run(int steps)
 
 		if (g_debug != -1) {
 			SetWatchList();
+			SetJumpList();
 			break;
 		}
 

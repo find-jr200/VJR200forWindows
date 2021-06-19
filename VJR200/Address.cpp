@@ -138,6 +138,29 @@ bool Address::Init()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 uint8_t Address::ReadByte(uint16_t address)
 {
+	bool isHit = false;
+	for (int i = 0; i < RW_BREAKPOINT_NUM; ++i) {
+		if (g_rwBKEnableR[i]) {
+			if (g_rwBreakPoint[i][1] < 0) {
+				if (g_rwBreakPoint[i][0] == address) {
+					isHit = true;
+				}
+			}
+			else {
+				if (g_rwBreakPoint[i][0] <= address && g_rwBreakPoint[i][1] >= address) {
+					isHit = true;
+				}
+			}
+		}
+	}
+
+	if (isHit) {
+		g_debug = 0;
+		TCHAR s[10];
+		wsprintf(s, _T("%04X %S"), address, _T("R"));
+		_tcscpy(g_RWBreak, s);
+	}
+
     DevType d = attribute[address];
     switch (d)
     {
@@ -222,6 +245,29 @@ uint8_t Address::ReadByteForDebug(uint16_t address)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Address::WriteByte(uint16_t address, uint8_t b)
 {
+	bool isHit = false;
+	for (int i = 0; i < RW_BREAKPOINT_NUM; ++i) {
+		if (g_rwBKEnableW[i]) {
+			if (g_rwBreakPoint[i][1] < 0) {
+				if (g_rwBreakPoint[i][0] == address) {
+					isHit = true;
+				}
+			}
+			else {
+				if (g_rwBreakPoint[i][0] <= address && g_rwBreakPoint[i][1] >= address) {
+					isHit = true;
+				}
+			}
+		}
+	}
+
+	if (isHit) {
+		g_debug = 0;
+		TCHAR s[10];
+		wsprintf(s, _T("%04X %S"), address, _T("W"));
+		_tcscpy(g_RWBreak, s);
+	}
+
     DevType d = attribute[address];
     switch (d)
     {

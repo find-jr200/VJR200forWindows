@@ -16,6 +16,22 @@ HNZVC
 
 #define OP_HANDLER(_name) void m6800_cpu_device::_name ()
 
+extern const int JUMP_HISTORY_SIZE;
+extern uint16_t g_prePC;
+extern TCHAR g_JumpHistory[][11];
+extern int g_JumpHistory_index;
+
+void AddJumpList(uint16_t new_add)
+{
+	TCHAR buff[11];
+	wsprintf(buff, _T("%04X->%04X"), g_prePC, new_add);
+	_tcsncpy(g_JumpHistory[g_JumpHistory_index], buff, 11);
+	g_JumpHistory[g_JumpHistory_index][10] = '\0';
+	if (++g_JumpHistory_index >= JUMP_HISTORY_SIZE)
+		g_JumpHistory_index = 0;
+}
+
+
 //OP_HANDLER( illegal )
 OP_HANDLER( illegal )
 {
@@ -231,6 +247,8 @@ OP_HANDLER( bra )
 	uint8_t t;
 	IMMBYTE(t);
 	PC+=SIGNED(t);
+
+	AddJumpList(PC);
 }
 
 /* $21 BRN relative ----- */
@@ -396,6 +414,7 @@ OP_HANDLER( pulx )
 OP_HANDLER( rts )
 {
 	PULLWORD(pPC);
+	AddJumpList(PC);
 }
 
 /* $3a ABX inherent ----- */
@@ -414,6 +433,8 @@ OP_HANDLER( rti )
 	PULLWORD(pPC);
 
 	CHECK_IRQ_LINES(); /* HJB 990417 */ 
+	AddJumpList(PC);
+
 }
 
 /* $3c PSHX inherent ----- */
@@ -459,6 +480,8 @@ OP_HANDLER( swi )
 	PUSHBYTE(CC);
 	SEI;
 	PCD = RM16(0xfffa);
+	AddJumpList(PC);
+
 }
 
 /* $40 NEGA inherent ?**** */
@@ -790,6 +813,8 @@ OP_HANDLER( tst_ix )
 OP_HANDLER( jmp_ix )
 {
 	INDEXED; PC=EA;
+	AddJumpList(PC);
+
 }
 
 /* $6f CLR indexed -0100 */
@@ -939,6 +964,8 @@ OP_HANDLER( tst_ex )
 OP_HANDLER( jmp_ex )
 {
 	EXTENDED; PC=EA;
+	AddJumpList(PC);
+
 }
 
 /* $7f CLR extended -0100 */
@@ -1088,6 +1115,7 @@ OP_HANDLER( bsr )
 	IMMBYTE(t);
 	PUSHWORD(pPC);
 	PC += SIGNED(t);
+	AddJumpList(PC);
 }
 
 /* $8e LDS immediate -**0- */
@@ -1433,6 +1461,8 @@ OP_HANDLER( jsr_ix )
 	INDEXED;
 	PUSHWORD(pPC);
 	PC = EA;
+	AddJumpList(PC);
+
 }
 
 /* $ae LDS indexed -**0- */
@@ -1611,6 +1641,8 @@ OP_HANDLER( jsr_ex )
 	EXTENDED;
 	PUSHWORD(pPC);
 	PC = EA;
+	AddJumpList(PC);
+
 }
 
 /* $be LDS extended -**0- */

@@ -22,6 +22,7 @@ extern const int STATUSBAR_HEIGHT;
 extern const int CJR_FILE_MAX;
 extern const int CPU_SPEED_MAX;
 extern const int BREAKPOINT_NUM;
+extern const int RW_BREAKPOINT_NUM;
 #define SOUNDBUFFER_BLOCK_NUM 5
 extern const TCHAR* APPDATA_PATH;
 extern const uint8_t g_gcharCode1[][14];
@@ -45,6 +46,9 @@ extern int g_dramWait;
 extern bool g_deviceRunning;
 extern int g_debug;
 extern int g_breakPoint[];
+extern int g_rwBreakPoint[][2];
+extern bool g_rwBKEnableR[];
+extern bool g_rwBKEnableW[];
 extern bool g_bSoundOn;
 extern bool g_bMemWindow;
 extern bool g_bDisasmWindow;
@@ -52,7 +56,8 @@ extern TCHAR g_strTable[][256];
 extern bool g_bForcedJoystick;
 extern int g_vcyncCounter;
 extern ITapeFormat* g_pTapeFormat;
-
+extern std::map<int, std::wstring> g_debugLabel;
+extern TCHAR g_RWBreak[];
 
 // ダイアログ・ini保存項目
 extern int g_cpuScale;
@@ -92,7 +97,6 @@ extern int g_bCmtAddBlank;
 extern bool g_bRomajiKana;
 extern bool g_bPrinterLed;
 extern bool g_bStatusBar;
-extern std::map<int, std::wstring> g_debugLabel;
 
 
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -124,6 +128,8 @@ void MountTapeFile(const TCHAR* strFile, int type);
 bool SetDebugLabel(const TCHAR* fileName);
 int Rtrim(TCHAR *s);
 void SetWatchList();
+void SetJumpList();
+int CheckAddress(TCHAR*);
 
 enum class Msg {
 	It_will_not_work_on_this_version_of_Windows = 1,
