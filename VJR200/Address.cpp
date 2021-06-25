@@ -157,7 +157,7 @@ uint8_t Address::ReadByte(uint16_t address)
 	if (isHit) {
 		g_debug = 0;
 		TCHAR s[10];
-		wsprintf(s, _T("%04X %S"), address, _T("R"));
+		wsprintf(s, _T("%04X %ls"), address, _T("R"));
 		_tcscpy(g_RWBreak, s);
 	}
 
@@ -264,7 +264,7 @@ void Address::WriteByte(uint16_t address, uint8_t b)
 	if (isHit) {
 		g_debug = 0;
 		TCHAR s[10];
-		wsprintf(s, _T("%04X %S"), address, _T("W"));
+		wsprintf(s, _T("%04X %ls"), address, _T("W"));
 		_tcscpy(g_RWBreak, s);
 	}
 

@@ -13,12 +13,13 @@
 #include "DisasmWindow.h"
 
 static const LPCWSTR szWindowClassMem = L"Disassemble Window";
-static const int OPERAND_MAX = 40;
-static const int LINE_MAX = 60;
+static const int LINES_MAX = 90;
+static const int CHARS_MAX = 50;
+static const int OPERAND_MAX = 30;
 static int lineHeight = 16;
-static int dispno, pos;
+static int dispno;
 
- const wchar_t DisasmWindow::msc_fontName[] = L"Courier New";
+const wchar_t DisasmWindow::msc_fontName[] = L"Courier New";
 const FLOAT DisasmWindow::msc_fontSize = 14;
 
 const wchar_t *const DisasmWindow::nimonic[256] = {
@@ -80,16 +81,20 @@ enum class AddressingMode { IMMEDIATE = 0, DIRECT = 1, INDEX = 2, EXTEND = 3, IM
 
 extern JRSystem sys;
 
-DisasmWindow::DisasmWindow(): hwnd(NULL),
-pRenderTarget(NULL),
-pTextFormat(NULL),
-pBlackBrush(NULL),
-pTextLayout(NULL)
+DisasmWindow::DisasmWindow():
+	hwnd(NULL),
+	pRenderTarget(NULL),
+	pTextFormat(NULL),
+	pBlackBrush(NULL),
+	pTextLayout(NULL)
 {
+	text = new wchar_t[CHARS_MAX * LINES_MAX];
 }
 
 DisasmWindow::~DisasmWindow()
 {
+	delete [] text;
+
 	SafeRelease(&pTextFormat);
 	SafeRelease(&pTextLayout);
 
@@ -267,33 +272,44 @@ HRESULT DisasmWindow::OnRender()
 		pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
 		pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
 
-		wchar_t  text[8000];
+		pRenderTarget->SetAntialiasMode(D2D1_ANTIALIAS_MODE::D2D1_ANTIALIAS_MODE_ALIASED);
+
 		D2D1_POINT_2F points;
 		points.x = 10.0f;
 		points.y = 0.0f;
 		text[0] = '\0';
 
-		uint16_t pc, sp, x;
+		uint16_t pc, sp, x, ppc;
 		uint8_t a, b, cc;
-		sys.pCpu->GetRegister(pc, sp, x, a, b, cc);
+		sys.pCpu->GetRegister(pc, sp, x, a, b, cc, ppc);
+
+		OperationSet oSet;
+		wchar_t line[CHARS_MAX];
+		curAddress = ppc;
+		prevAddress = curAddress;
+		SetOperation(&oSet);
+		wsprintf(line, L"%04X %s%s %s\r\n", oSet.startAddress, oSet.bytesString, oSet.nimonic, oSet.operand);
+		wcscat(text, line);
+
 		curAddress = pc;
-		for (int i = 0; i <  dispno; ++i) {
-			OperationSet oSet;
-			wchar_t line[LINE_MAX];
+		prevAddress = curAddress;
+
+		if (dispno > LINES_MAX)
+			dispno = LINES_MAX;
+
+		for (int i = 0; i <  dispno - 1; ++i) {
 			prevAddress = curAddress;
 			SetOperation(&oSet);
 			if (curAddress - prevAddress < 0) break;
 			wsprintf(line, L"%04X %s%s %s\r\n", oSet.startAddress, oSet.bytesString, oSet.nimonic, oSet.operand);
 
-
 			auto ws = g_debugLabel[oSet.startAddress];
 			if (ws != L"") {
 				++i;
-				_TCHAR str[LINE_MAX] ;
+				wchar_t str[CHARS_MAX];
 				wsprintf(str, L"%s:--------\r\n", ws.c_str());
 				wcscat(text, str);
 			}
-
 			wcscat(text, line);
 		}
 
@@ -309,6 +325,14 @@ HRESULT DisasmWindow::OnRender()
 		if (SUCCEEDED(hr))
 			pRenderTarget->DrawTextLayout(points, pTextLayout, pBlackBrush, D2D1_DRAW_TEXT_OPTIONS_CLIP);
 		SafeRelease(&pTextLayout);
+
+		RECT rect;
+		GetWindowRect(hwnd, &rect);
+		D2D1_POINT_2F p1 = D2D1::Point2F(0, msc_fontSize * 2 + 2);
+		D2D1_POINT_2F p2 = D2D1::Point2F((float)rect.right, msc_fontSize * 2 + 2);
+
+		if (SUCCEEDED(hr))
+			pRenderTarget->DrawLine(p1, p2, pBlackBrush);
 
 		hr = pRenderTarget->EndDraw();
 

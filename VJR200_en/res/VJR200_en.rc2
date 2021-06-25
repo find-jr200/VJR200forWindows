@@ -9,9 +9,9 @@ FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,100,183,50,14
 #ifdef _WIN64
-    LTEXT           "VJR200, Version 1.5.1 (64bit)",IDC_STATIC,32,12,96,8
+    LTEXT           "VJR200, Version 1.5.2 (64bit)",IDC_STATIC,32,12,96,8
 #else
-    LTEXT           "VJR200, Version 1.5.1 (32bit)",IDC_STATIC,32,12,96,8
+    LTEXT           "VJR200, Version 1.5.2 (32bit)",IDC_STATIC,32,12,96,8
 #endif
     LTEXT           "Copyright 2017,2021  FIND",IDC_STATIC,30,28,79,8
     LTEXT           "The following software was used for VJR-200 based on each license.",IDC_STATIC,7,43,143,22

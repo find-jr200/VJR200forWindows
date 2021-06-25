@@ -94,6 +94,8 @@ TODO:
 extern JRSystem sys;
 extern uint16_t g_prePC;
 
+void AddJumpList(uint16_t new_add, bool bEirq = false);
+
 CEREAL_CLASS_VERSION(m6800_cpu_device, CEREAL_VER);
 
 #if 0
@@ -496,11 +498,12 @@ void m6800_cpu_device::enter_interrupt(const char *message,uint16_t irq_vector)
     }
     SEI;
     PCD = RM16( irq_vector );
+	AddJumpList(PCD, true);
 }
 
-void m6800_cpu_device::GetRegister(uint16_t & pc, uint16_t & sp, uint16_t & x, uint8_t & a, uint8_t & b, uint8_t & cc)
+void m6800_cpu_device::GetRegister(uint16_t & pc, uint16_t & sp, uint16_t & x, uint8_t & a, uint8_t & b, uint8_t & cc, uint16_t & ppc)
 {
-    pc = m_pc.d; sp = m_s.d; x = pX.d, a = A, b = B; cc = m_cc;
+	pc = m_pc.d; sp = m_s.d; x = pX.d, a = A, b = B; cc = m_cc; ppc = m_ppc.d;
 }
 
 

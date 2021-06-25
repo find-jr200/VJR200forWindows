@@ -17,19 +17,25 @@ HNZVC
 #define OP_HANDLER(_name) void m6800_cpu_device::_name ()
 
 extern const int JUMP_HISTORY_SIZE;
-extern uint16_t g_prePC;
-extern TCHAR g_JumpHistory[][11];
+extern TCHAR g_JumpHistory[][12];
 extern int g_JumpHistory_index;
 
-void AddJumpList(uint16_t new_add)
+
+void AddJumpList(uint16_t new_add, bool bEirq)
 {
-	TCHAR buff[11];
-	wsprintf(buff, _T("%04X->%04X"), g_prePC, new_add);
-	_tcsncpy(g_JumpHistory[g_JumpHistory_index], buff, 11);
-	g_JumpHistory[g_JumpHistory_index][10] = '\0';
+	TCHAR buff[12];
+	TCHAR eireq_flag[2];
+	if (bEirq)
+		_tcscpy(eireq_flag, _T("i"));
+	else
+		_tcscpy(eireq_flag, _T(""));
+	wsprintf(buff, _T("%04X->%04X%ls"), g_prePC, new_add, eireq_flag);
+	_tcsncpy(g_JumpHistory[g_JumpHistory_index], buff, 12);
+	g_JumpHistory[g_JumpHistory_index][11] = '\0';
 	if (++g_JumpHistory_index >= JUMP_HISTORY_SIZE)
 		g_JumpHistory_index = 0;
 }
+
 
 
 //OP_HANDLER( illegal )

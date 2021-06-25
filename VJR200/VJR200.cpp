@@ -89,7 +89,7 @@ int g_vcyncCounter = 0;
 ITapeFormat* g_pTapeFormat;
 std::map<int, std::wstring> g_debugLabel;
 uint16_t g_prePC = 0;
-TCHAR g_JumpHistory[JUMP_HISTORY_SIZE][11] = { 0 };
+TCHAR g_JumpHistory[JUMP_HISTORY_SIZE][12] = { 0 };
 int g_JumpHistory_index = 0;
 TCHAR g_RWBreak[10] = { 0 };
 
@@ -2088,9 +2088,9 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 	{
 		const int OFFSET = 40;
 		TCHAR c[40] = {};
-		uint16_t pc, sp, x;
+		uint16_t pc, sp, x, ppc;
 		uint8_t a, b, cc;
-		sys.pCpu->GetRegister(pc, sp, x, a, b, cc);
+		sys.pCpu->GetRegister(pc, sp, x, a, b, cc, ppc);
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hwnd, &ps);
 		HFONT hFont, hFontOld;
@@ -2120,7 +2120,7 @@ INT_PTR CALLBACK DlgDebugProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 
 		if (_tcslen(g_RWBreak) != 0){
 			TCHAR s[10];
-			wsprintf(s, _T("%04X"), g_prePC);
+			wsprintf(s, _T("%04X"), ppc);
 			TextOut(hdc, 460, 50, s, (int)_tcslen(s));
 			TextOut(hdc, 460, 100, g_RWBreak, (int)_tcslen(g_RWBreak));
 		}

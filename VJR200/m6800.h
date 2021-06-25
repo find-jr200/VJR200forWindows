@@ -75,7 +75,7 @@ public:
     virtual void device_reset();
     void irq();
     void nmi();
-    void GetRegister(uint16_t& pc, uint16_t& sp, uint16_t& x, uint8_t& a, uint8_t& b, uint8_t& cc);
+    void GetRegister(uint16_t& pc, uint16_t& sp, uint16_t& x, uint8_t& a, uint8_t& b, uint8_t& cc, uint16_t & ppc);
     void CHECK_IRQ_LINES();
 
     template <class Archive>

@@ -63,9 +63,10 @@ protected:
 	static const int bytes[256];
 	static const int addressing[256];
 
-	int prevAddress;
+	int prevAddress, ppc = 0;
 	SCROLLINFO si;
 
+	wchar_t* text;
 };
 
 #endif
