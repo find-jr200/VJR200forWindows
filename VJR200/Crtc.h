@@ -7,6 +7,8 @@
 #include <atlbase.h>
 #include <d2d1.h>
 #include <dwrite.h>
+#include <wincodec.h>
+#include <wincodecsdk.h>
 #endif
 #include "Address.h"
 
@@ -53,15 +55,19 @@ protected:
 	static const wchar_t msc_fontName[];
 	static const FLOAT msc_fontSize;
 
-	IDWriteTextFormat* pTextFormatL = nullptr;
-	IDWriteTextFormat* pTextFormatR = nullptr;
-	ID2D1HwndRenderTarget* pHwndRT = nullptr;
-	ID2D1Bitmap* pBitmap = nullptr;
-	ID2D1SolidColorBrush *pGrayBrush = nullptr;
-	ID2D1SolidColorBrush *pBlackBrush = nullptr;
+	IDWriteTextFormat* pTextFormatL = NULL;
+	IDWriteTextFormat* pTextFormatR = NULL;
+	ID2D1HwndRenderTarget* pHwndRT = NULL;
+	ID2D1Bitmap* pBitmap = NULL;
+	ID2D1SolidColorBrush *pGrayBrush = NULL;
+	ID2D1SolidColorBrush *pBlackBrush = NULL;
+	ID2D1Bitmap *pFd1active = NULL, *pFd1Inactive = NULL, *pFd2active = NULL, *pFd2Inactive = NULL;
 
 	HRESULT CreateDeviceResources();
 	HRESULT CreateDeviceIndependentResources();
+	HRESULT ConvertToD2DBitmap(ID2D1RenderTarget * pRenderTarget, IWICImagingFactory * pIWICFactory, UINT resourceId, UINT destinationWidth, UINT destinationHeight, ID2D1Bitmap ** pBitmap);
+
+
 #endif
 
 	bool bFullScreen = false;

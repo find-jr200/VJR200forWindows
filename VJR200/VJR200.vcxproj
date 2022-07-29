@@ -161,9 +161,15 @@
     <ClInclude Include="AppSettingXml.h" />
     <ClInclude Include="CjrFormat.h" />
     <ClInclude Include="Crtc.h" />
+    <ClInclude Include="DiskImage.h" />
     <ClInclude Include="DisasmWindow.h" />
+    <ClInclude Include="DiskImageCollection.h" />
+    <ClInclude Include="DiskImageDlg.h" />
+    <ClInclude Include="DiskImageFile.h" />
     <ClInclude Include="emu.h" />
     <ClInclude Include="emucore.h" />
+    <ClInclude Include="FddSystem.h" />
+    <ClInclude Include="Gptr.h" />
     <ClInclude Include="ImagePrinter.h" />
     <ClInclude Include="ITapeFormat.h" />
     <ClInclude Include="Jr2Format.h" />
@@ -172,16 +178,19 @@
     <ClInclude Include="MemWindow.h" />
     <ClInclude Include="Mn1271.h" />
     <ClInclude Include="Mn1544.h" />
+    <ClInclude Include="PC88Fdc.h" />
     <ClInclude Include="Printer.h" />
     <ClInclude Include="RawPrinter.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="SerializeGlobal.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="JRSystem.h" />
+    <ClInclude Include="StdHeader.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextPrinter.h" />
     <ClInclude Include="tinyxml2.h" />
     <ClInclude Include="VJR200.h" />
+    <ClInclude Include="X88DiskImageMemory.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Address.cpp" />
@@ -190,7 +199,12 @@
     <ClCompile Include="AppSettingXml.cpp" />
     <ClCompile Include="CjrFormat.cpp" />
     <ClCompile Include="Crtc.cpp" />
+    <ClCompile Include="DiskImage.cpp" />
     <ClCompile Include="DisasmWindow.cpp" />
+    <ClCompile Include="DiskImageCollection.cpp" />
+    <ClCompile Include="DiskImageDlg.cpp" />
+    <ClCompile Include="DiskImageFile.cpp" />
+    <ClCompile Include="FddSystem.cpp" />
     <ClCompile Include="Jr2Format.cpp" />
     <ClCompile Include="m6800.cpp" />
     <ClCompile Include="MemWindow.cpp" />
@@ -198,6 +212,7 @@
     <ClCompile Include="Mn1544.cpp" />
     <ClCompile Include="OptionDialog.cpp" />
     <ClCompile Include="ImagePrinter.cpp" />
+    <ClCompile Include="PC88Fdc.cpp" />
     <ClCompile Include="Printer.cpp" />
     <ClCompile Include="RawPrinter.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -207,14 +222,20 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="JRSystem.cpp" />
+    <ClCompile Include="StdHeader.cpp" />
     <ClCompile Include="TextPrinter.cpp" />
     <ClCompile Include="tinyxml2.cpp" />
     <ClCompile Include="VJR200.cpp" />
+    <ClCompile Include="X88DiskImageMemory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="VJR200.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="1b.bmp" />
+    <Image Include="1r.bmp" />
+    <Image Include="2b.bmp" />
+    <Image Include="2r.bmp" />
     <Image Include="PRNPNG_A.bmp" />
     <Image Include="PRNPNG_I.bmp" />
     <Image Include="PRNRAW_A.bmp" />

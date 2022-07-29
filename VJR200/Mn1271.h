@@ -31,8 +31,8 @@ enum class Reg1d { TCA_STAT = 1, TCB_STAT = 2, TCC_STAT = 4, TCD_STAT = 8, TCE_S
 enum class Reg1e { PI0_MASK = 1, PI1_MASK = 2, PI2_MASK = 4, SERIAL_MASK = 64 };
 enum class Reg1f { TCA_MASK = 1, TCB_MASK = 2, TCC_MASK = 4, TCD_MASK = 8, TCE_MASK = 16, TCF_MASK = 32 };
 enum class IrqType { KON = 1, SYSINT = 2, USERINT = 4, SERIAL = 128, TCA = 512, TCB = 1024, TCC = 2048, TCD = 4096, TCE = 8192, TCF = 16384 };
-enum class PrinterOutput {TEXT, RAW, PNG};
-enum class PrinterMaker {EPSON, PANASONIC};
+enum class PrinterOutput { TEXT, RAW, PNG };
+enum class PrinterMaker { EPSON, PANASONIC };
 
 class Mn1271
 {
@@ -99,20 +99,20 @@ protected:
 	void Reg7_read();
 
 #ifdef _ANDROID
-    SLObjectItf engineObject = NULL;
-    SLEngineItf engineEngine = NULL;
-    SLObjectItf outputMixObject = NULL;
-    SLObjectItf bqPlayerObject[CH_NUM] = {NULL, NULL, NULL};
-    SLPlayItf bqPlayerPlay[CH_NUM] = {NULL, NULL, NULL};
-    SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue[CH_NUM] = {NULL, NULL, NULL};
-    SLVolumeItf bqPlayerVolume[CH_NUM] = {NULL, NULL, NULL};
-    short buffer[CH_NUM][SOUNDBUFFER_BLOCK_NUM][SAMPLE_NUM];
-    int curBuffer[CH_NUM] = {NULL, NULL, NULL};
+	SLObjectItf engineObject = NULL;
+	SLEngineItf engineEngine = NULL;
+	SLObjectItf outputMixObject = NULL;
+	SLObjectItf bqPlayerObject[CH_NUM] = { NULL, NULL, NULL };
+	SLPlayItf bqPlayerPlay[CH_NUM] = { NULL, NULL, NULL };
+	SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue[CH_NUM] = { NULL, NULL, NULL };
+	SLVolumeItf bqPlayerVolume[CH_NUM] = { NULL, NULL, NULL };
+	short buffer[CH_NUM][SOUNDBUFFER_BLOCK_NUM][SAMPLE_NUM];
+	int curBuffer[CH_NUM] = { NULL, NULL, NULL };
 
-    void CopyLocalBuffer(short* buffer, int ch);
-    static void bqPlayerCallback0(SLAndroidSimpleBufferQueueItf bq, void *context);
-    static void bqPlayerCallback1(SLAndroidSimpleBufferQueueItf bq, void *context);
-    static void bqPlayerCallback2(SLAndroidSimpleBufferQueueItf bq, void *context);
+	void CopyLocalBuffer(short* buffer, int ch);
+	static void bqPlayerCallback0(SLAndroidSimpleBufferQueueItf bq, void *context);
+	static void bqPlayerCallback1(SLAndroidSimpleBufferQueueItf bq, void *context);
+	static void bqPlayerCallback2(SLAndroidSimpleBufferQueueItf bq, void *context);
 
 #else
 	LPDIRECTSOUND8		pDS = nullptr;
@@ -145,8 +145,8 @@ protected:
 	unsigned int tcfHSetVal = 0;
 	unsigned int tcfLSetVal = 0;
 
-	int tcaCountEnable, tcbCountEnable, tceCountEnable;
-	int tcaCycleCount, tcbCycleCount, tceCycleCount;
+	int tcaCountEnable, tcbCountEnable, tccCountEnable, tcdCountEnable, tceCountEnable, tcfCountEnable;
+	int tcaCycleCount, tcbCycleCount, tccCycleCount, tcdCycleCount, tceCycleCount, tcfCycleCount;
 	int dsBufferSize;
 	bool bPlaying[3] = {};
 	int frequency[3] = {};
@@ -157,7 +157,7 @@ protected:
 	unsigned int blockSize;
 	double step = 1 / (double)SAMPLING_FREQUENCY;
 
-    bool bSaving = false;
+	bool bSaving = false;
 	bool bWrite = false;
 	bool bRead = false;
 	bool bRemoteOn = false;
@@ -173,13 +173,15 @@ inline void Mn1271::save(Archive & ar, std::uint32_t const version) const
 	ar(reg17WriteBuf, reg1aWriteBuf, reg18ReadBuf, reg1bReadBuf);
 	ar(debugTcaEnable, debugTcbEnable, debugTccEnable, debugTcdEnable, debugTceEnable, debugTcfEnable);
 	ar(tcaSetVal, tcbSetVal, tccSetVal, tcdSetVal, tceHSetVal, tceLSetVal, tcfHSetVal, tcfLSetVal);
-	ar(tcaCountEnable, tcbCountEnable, tceCountEnable, tcaCycleCount, tcbCycleCount, tceCycleCount);
+	ar(tcaCountEnable, tcbCountEnable, tccCountEnable, tcdCountEnable, tceCountEnable, tcfCountEnable);
+	ar(tcaCycleCount, tcbCycleCount, tccCycleCount, tcdCycleCount, tceCycleCount, tcfCycleCount);
+
 	for (int i = 0; i < 3; ++i) {
 		ar(bPlaying[i]);
 		ar(frequency[i]);
 	}
 	ar(step);
-	ar(bWrite, bWrite, bRemoteOn, bEnterIrq, preCpuScale);
+	ar(bWrite, bRead, bRemoteOn, bEnterIrq, preCpuScale);
 }
 
 template<class Archive>
@@ -195,7 +197,8 @@ inline void Mn1271::load(Archive & ar, std::uint32_t const version)
 	ar(reg17WriteBuf, reg1aWriteBuf, reg18ReadBuf, reg1bReadBuf);
 	ar(debugTcaEnable, debugTcbEnable, debugTccEnable, debugTcdEnable, debugTceEnable, debugTcfEnable);
 	ar(tcaSetVal, tcbSetVal, tccSetVal, tcdSetVal, tceHSetVal, tceLSetVal, tcfHSetVal, tcfLSetVal);
-	ar(tcaCountEnable, tcbCountEnable, tceCountEnable, tcaCycleCount, tcbCycleCount, tceCycleCount);
+	ar(tcaCountEnable, tcbCountEnable, tccCountEnable, tcdCountEnable, tceCountEnable, tcfCountEnable);
+	ar(tcaCycleCount, tcbCycleCount, tccCycleCount, tcdCycleCount, tceCycleCount, tcfCycleCount);
 	for (int i = 0; i < 3; ++i) {
 		ar(bPlaying[i]);
 		ar(frequency[i]);

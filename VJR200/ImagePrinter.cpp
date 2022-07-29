@@ -230,7 +230,7 @@ void ImagePrinter::Finish(bool bManual)
 	if (g_prAutoFeed || bManual) {
 		if (curX != pageMargin || curY != pageMargin) {
 			if (!SavePngFile())
-				MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+				MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 
 			SetNewPage();
 		}
@@ -302,7 +302,7 @@ bool ImagePrinter::SavePngFile()
 		_tcscat(writePath, c);
 		++i;
 		if (i >= 1000) {
-			MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+			MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 			return false;
 		}
 	} while (PathFileExists(writePath) && !PathIsDirectory(writePath));

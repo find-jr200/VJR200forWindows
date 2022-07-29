@@ -58,6 +58,8 @@ public:
 	template<class Archive>
 	inline void load(Archive & ar, std::uint32_t const version)
 	{
+		if (version < 2) throw(g_strTable[(int)Msg::The_state_file_is_old_and_cant_be_used]);
+
 		ar(cpuScale, dramWait, bSoundOn);
 		g_cpuScale = cpuScale;
 		g_dramWait = dramWait;

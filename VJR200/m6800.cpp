@@ -663,6 +663,7 @@ int m6800_cpu_device::run(int steps)
         sys.pMn1271->TickTimerCounter(c);
         sys.pCrtc->TickCounter(c);
         sys.pMn1544->TickCounter(c);
+		sys.pFddSystem->TickCounter(c);
 
         CHECK_IRQ_LINES();
 

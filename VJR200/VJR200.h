@@ -20,6 +20,7 @@ extern const int STR_RESOURCE_NUM;
 extern const unsigned int RECENT_FILES_NUM;
 extern const int STATUSBAR_HEIGHT;
 extern const int CJR_FILE_MAX;
+extern const int D88_FILE_MAX;
 extern const int CPU_SPEED_MAX;
 extern const int BREAKPOINT_NUM;
 extern const int RW_BREAKPOINT_NUM;
@@ -37,6 +38,7 @@ extern HWND g_hMemWnd;
 extern HMODULE g_hMod;
 extern ID2D1Factory* g_pD2dFactory;
 extern IDWriteFactory* g_pDWriteFactory;
+extern IWICImagingFactory *pWICImagingFactory;
 extern MemWindow* g_pMemWindow;
 extern DisasmWindow* g_pDisasmWindow;
 extern HANDLE g_hEvent[][6];
@@ -58,6 +60,7 @@ extern int g_vcyncCounter;
 extern ITapeFormat* g_pTapeFormat;
 extern std::map<int, std::wstring> g_debugLabel;
 extern TCHAR g_RWBreak[];
+extern bool g_bFddEnabled;
 
 // ダイアログ・ini保存項目
 extern int g_cpuScale;
@@ -73,6 +76,7 @@ extern RECT g_windowPos;
 #endif
 extern TCHAR g_pRomFile[];
 extern TCHAR g_pFontFile[];
+extern TCHAR g_pFdRomFile[];
 extern deque<wstring> g_rFilesforCJRSet;
 extern deque<wstring> g_rFilesforQLoad;
 extern deque<wstring> g_macroStrings;
@@ -97,14 +101,13 @@ extern int g_bCmtAddBlank;
 extern bool g_bRomajiKana;
 extern bool g_bPrinterLed;
 extern bool g_bStatusBar;
-
+extern bool g_bDetachFdd;
 
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 BOOL OpenFileDialog(TCHAR * filter, TCHAR * fileName, HWND hwnd);
-INT_PTR CALLBACK DlgSaveCjrProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 void ChangeWindowSize(HMENU hMenu);
 void SetMenuItemState(HMENU hMenu);
 int GetRefreshRate();
@@ -124,12 +127,15 @@ void GetStateFilePathName(TCHAR pathName[], int idx);
 void SetMenuItemForRecentFiles();
 void SetMenuItemForStateSaveLoad();
 int CheckFileFormat(const TCHAR* fileName);
+int CheckDiskFormat(const TCHAR* fileName);
 void MountTapeFile(const TCHAR* strFile, int type);
 bool SetDebugLabel(const TCHAR* fileName);
 int Rtrim(TCHAR *s);
 void SetWatchList();
 void SetJumpList();
 int CheckAddress(TCHAR*);
+wstring StringToWString(std::string str);
+
 
 enum class Msg {
 	It_will_not_work_on_this_version_of_Windows = 1,
@@ -171,7 +177,11 @@ enum class Msg {
 	Invalid_file_format,
 	Disassemble_Window,
 	This_file_cant_be_processed,
-	Help_Url
+	Help_Url, // 40
+	Failed_to_save_the_state_file,
+	Failed_to_load_the_state_file,
+	Error,
+	The_state_file_is_old_and_cant_be_used
 };
 
 

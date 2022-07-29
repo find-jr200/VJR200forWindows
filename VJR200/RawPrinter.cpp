@@ -95,7 +95,7 @@ void RawPrinter::Write(uint8_t val)
 	}
 
 	if (hFile == INVALID_HANDLE_VALUE) {
-		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 		hFile = NULL;
 		return;
 	}

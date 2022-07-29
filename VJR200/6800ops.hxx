@@ -137,7 +137,15 @@ OP_HANDLER( sec )
 OP_HANDLER( cli )
 {
 	CLI;
-	ONE_MORE_INSN();
+	// ONE_MORE_INSN();
+	pPPC = pPC;
+	uint8_t ireg;
+	ireg = M_RDOP(PCD);
+	PC++;
+	(this->*m_insn[ireg])();
+	increment_counter(m_cycles[ireg]);
+	g_dramWait += m_cycles[ireg];
+
 	CHECK_IRQ_LINES(); /* HJB 990417 */
 }
 
@@ -145,7 +153,15 @@ OP_HANDLER( cli )
 OP_HANDLER( sei )
 {
 	SEI;
-	ONE_MORE_INSN();
+	// ONE_MORE_INSN();
+	pPPC = pPC;
+	uint8_t ireg;
+	ireg = M_RDOP(PCD);
+	PC++;
+	(this->*m_insn[ireg])();
+	increment_counter(m_cycles[ireg]);
+	g_dramWait += m_cycles[ireg];
+
 	CHECK_IRQ_LINES(); /* HJB 990417 */
 }
 

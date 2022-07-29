@@ -36,7 +36,6 @@ JRSystem::JRSystem()
 
 JRSystem::~JRSystem()
 {
-    Dispose();
 }
 
 
@@ -256,6 +255,8 @@ void JRSystem::Save()
         archive(*pMn1271);
         archive(*pMn1544);
         archive(*pCpu);
+		archive(*pFddSystem);
+		archive(*(pFddSystem->pFdc));
 
         if (g_pTapeFormat != nullptr) {
             switch (CheckFileFormat(g_pTapeFormat->GetFileName())) {
@@ -267,12 +268,16 @@ void JRSystem::Save()
                     break;
             }
         }
+
+
+
+
     }
     catch (...) {
 #ifdef _ANDROID
         __android_log_write(ANDROID_LOG_DEBUG, "JRSYstem.Save","ステートセーブに失敗しました");
 #else
-        MessageBox(g_hMainWnd, _T("ステートセーブに失敗しました"), _T("エラー"), MB_OK);
+		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_save_the_state_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 #endif
     }
 
@@ -302,6 +307,8 @@ void JRSystem::Load()
         archive(*pMn1271);
         archive(*pMn1544);
         archive(*pCpu);
+		archive(*pFddSystem);
+		archive(*(pFddSystem->pFdc));
 
         if (g_pTapeFormat != nullptr) {
             switch (CheckFileFormat(g_pTapeFormat->GetFileName())) {
@@ -314,11 +321,15 @@ void JRSystem::Load()
             }
         }
     }
+	catch (TCHAR* c) 
+	{
+		MessageBox(g_hMainWnd, c, g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
+	}
     catch (...) {
 #ifdef _ANDROID
         __android_log_write(ANDROID_LOG_DEBUG, "JRSYstem.Load","ステートロードに失敗しました");
 #else
-        MessageBox(g_hMainWnd, _T("ステートロードに失敗しました"), _T("エラー"), MB_OK);
+        MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_load_the_state_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 #endif
 
     }

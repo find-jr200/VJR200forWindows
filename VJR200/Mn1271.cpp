@@ -43,7 +43,7 @@ Mn1271::Mn1271()
 
 Mn1271::~Mn1271()
 {
-    SoundOff();
+	SoundOff();
 
 	for (int i = 0; i < 3; ++i) {
 		if (pSecondary[i]) {
@@ -67,18 +67,18 @@ Mn1271::~Mn1271()
 			CloseHandle(bufWriteEvent[i]);
 	}
 
-    for (int i = 0; i < 3; ++i) {
-        if (localBuf[i] != nullptr) {
-            delete [] localBuf[i];
-            localBuf[i] = nullptr;
-        }
+	for (int i = 0; i < 3; ++i) {
+		if (localBuf[i] != nullptr) {
+			delete[] localBuf[i];
+			localBuf[i] = nullptr;
+		}
 
-    }
+	}
 
-    if (saveData != nullptr) {
-        delete saveData;
-        saveData = nullptr;
-    }
+	if (saveData != nullptr) {
+		delete saveData;
+		saveData = nullptr;
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +96,7 @@ bool Mn1271::Init(void)
 		eTime[i] = 0;
 	}
 
-    HRESULT ret;
+	HRESULT ret;
 
 	for (int i = 0; i < 3; ++i) {
 		bufWriteEvent[i] = CreateEvent(NULL, TRUE, TRUE, NULL);
@@ -112,7 +112,6 @@ bool Mn1271::Init(void)
 	}
 
 	// 強調モード
-	//ret = pDS->SetCooperativeLevel(g_hMainWnd, DSSCL_PRIORITY);
 	ret = pDS->SetCooperativeLevel(g_hMainWnd, DSSCL_EXCLUSIVE | DSSCL_PRIORITY);
 	if (FAILED(ret)) {
 		return false;
@@ -164,7 +163,7 @@ bool Mn1271::Init(void)
 		if (FAILED(ret))
 			return false;
 	}
-    return true;
+	return true;
 }
 
 
@@ -175,7 +174,7 @@ bool Mn1271::Init(void)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::SetVolume(int vol)
 {
-    float f = log10f(vol * 0.01f) * 2000;
+	float f = log10f(vol * 0.01f) * 2000;
 	if (f < -10000) f = -10000;
 	if (pPrimary != nullptr) pPrimary->SetVolume((int)f);
 }
@@ -188,7 +187,7 @@ void Mn1271::SetVolume(int vol)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::SetPan(int ch, int val)
 {
-    val = (val - 5) * 10;
+	val = (val - 5) * 10;
 	float f = 0;
 	if (val < 0) {
 		f = powf(100.f, log10f((float)-val)) * -1;
@@ -211,122 +210,111 @@ void Mn1271::SetPan(int ch, int val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::TickTimerCounter(int cycles)
 {
-    double tickTime = (double)cycles / (CLOCK * g_cpuScale * 0.01);
-    int ps = 0;
+	double tickTime = (double)cycles / (CLOCK * g_cpuScale * 0.01);
+	int ps = 0;
 
-    // テープロード用カウンタ
-    if (((reg[7] & 0x40) != 0) && (g_pTapeFormat != nullptr))
-        g_pTapeFormat->TickCounter(cycles);
+	// テープロード用カウンタ
+	if (((reg[7] & 0x40) != 0) && (g_pTapeFormat != nullptr))
+		g_pTapeFormat->TickCounter(cycles);
 
-    // サウンド処理
-    for (int i = 0; i < 3; ++i) {
-        eTime[i] += tickTime;
-    }
+	// サウンド処理
+	for (int i = 0; i < 3; ++i) {
+		eTime[i] += tickTime;
+	}
 
-    // TCA　シリアル
-    ps = reg[0xe] & (uint8_t)(Reg0e::PRESCALE);
-    ps = GetPrescale(ps >> 3);
-    int tcaCycle = tcaSetVal * ps;
+	// TCA　シリアル
+	ps = reg[0xe] & (uint8_t)(Reg0e::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	int tcaCycle = tcaSetVal * ps;
 
-    if (tcaCycle != 0 && tcaCountEnable != 0) {
-        tcaCycleCount += cycles;
-        if (tcaCycleCount >= tcaCycle && (g_debug == -1 || debugTcaEnable)) {
-            AssertIrq((int)(IrqType::TCA));
-            tcaCycleCount -= tcaCycle;
-            reg[0xe] |= 0x20;
-        }
-        reg[0xf] = tcaSetVal - (tcaCycleCount / ps);
-    }
+	if (tcaCycle != 0 && tcaCountEnable != 0) {
+		tcaCycleCount += cycles;
+		if (tcaCycleCount >= tcaCycle && (g_debug == -1 || debugTcaEnable)) {
+			AssertIrq((int)(IrqType::TCA));
+			tcaCycleCount -= tcaCycle;
+			reg[0xe] |= 0x20;
+		}
+		reg[0xf] = tcaSetVal - (tcaCycleCount / ps);
+	}
 
-    // TCB　テンポ
-    ps = reg[0x10] & (uint8_t)(Reg0e::PRESCALE);
-    ps = GetPrescale(ps >> 3);
-    int tcbCycle = tcbSetVal * ps;
+	// TCB　テンポ
+	ps = reg[0x10] & (uint8_t)(Reg0e::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	int tcbCycle = tcbSetVal * ps;
 
-    if (tcbCycle != 0 && tcbCountEnable != 0) {
-        tcbCycleCount += cycles;
-        if (tcbCycleCount >= tcbCycle && (g_debug == -1 || debugTcbEnable)) {
-            AssertIrq((int)(IrqType::TCB));
-            tcbCycleCount -= tcbCycle;
-            reg[0x10] |= 0x20;
-        }
-        reg[0x11] = tcbSetVal - (tcbCycleCount / ps);
-    }
+	if (tcbCycle != 0 && tcbCountEnable != 0) {
+		tcbCycleCount += cycles;
+		if (tcbCycleCount >= tcbCycle && (g_debug == -1 || debugTcbEnable)) {
+			AssertIrq((int)(IrqType::TCB));
+			tcbCycleCount -= tcbCycle;
+			reg[0x10] |= 0x20;
+		}
+		reg[0x11] = tcbSetVal - (tcbCycleCount / ps);
+	}
 
-    // TCC　サウンド
-    if ((reg[0x12] & (uint8_t)(RegSound8::DATA)) != 0) {
-        ps = reg[0x12] & (uint8_t)(RegSound8::PRESCALE);
-        ps = GetPrescale(ps >> 3);
-        ps *= 2;
-        double t = (double)ps / CLOCK;
-        int regVal = reg[0x13];
-        regVal -= (int)(tickTime / t);
-        if (regVal < 0) {
-            reg[0x13] = (uint8_t)(tccSetVal + regVal);
-            if (g_debug == -1 || debugTccEnable) AssertIrq((int)(IrqType::TCC));
-            reg[0x12] |= 0x20;
-        }
-        else {
-            reg[0x13] = (uint8_t)regVal;
-        }
-    }
+	// TCC　サウンド
+	ps = reg[0x12] & (uint8_t)(RegSound8::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	int tccCycle = tccSetVal * ps;
 
-    // TCD　サウンド
-    if ((reg[0x14] & (uint8_t)(RegSound8::DATA)) != 0) {
-        ps = reg[0x14] & (uint8_t)(RegSound8::PRESCALE);
-        ps = GetPrescale(ps >> 3);
-        ps *= 2;
-        double t = (double)ps / CLOCK;
-        int regVal = reg[0x15];
-        regVal -= (int)(tickTime / t);
-        if (regVal < 0) {
-            reg[0x15] = (uint8_t)(tcdSetVal + regVal);
-            if (g_debug == -1 || debugTcdEnable) AssertIrq((int)(IrqType::TCD));
-            reg[0x14] |= 0x20;
-        }
-        else {
-            reg[0x15] = (uint8_t)regVal;
-        }
-    }
+	if (tccCycle != 0 && tccCountEnable != 0) {
+		tccCycleCount += cycles;
+		if (tccCycleCount >= tccCycle && (g_debug == -1 || debugTccEnable)) {
+			AssertIrq((int)(IrqType::TCC));
+			tccCycleCount -= tccCycle;
+			reg[0x12] |= 0x20;
+		}
+		reg[0x13] = tccSetVal - (tccCycleCount / ps);
+	}
 
-    // TCE　リアルタイム
-    ps = reg[0x16] & (uint8_t)(RegSound16::PRESCALE);
-    ps = GetPrescale(ps >> 3);
-    int tceCycle = ((tceHSetVal << 8) + tceLSetVal) * ps;
+	// TCD　サウンド
+	ps = reg[0x14] & (uint8_t)(RegSound8::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	int tcdCycle = tcdSetVal * ps;
 
-    if (tceCycle != 0 && tceCountEnable == 1) {
-        tceCycleCount += cycles;
-        if (tceCycleCount >= tceCycle && (g_debug == -1 || debugTceEnable)) {
-            AssertIrq((int)(IrqType::TCE));
-            tceCycleCount -= tceCycle;
-            reg[0x16] |= 0x20;
-        }
-        int c = ((tceHSetVal << 8) + tceLSetVal) - (tceCycleCount / ps);
-        reg[0x17] = c >> 8;
-        reg[0x18] = c & 0xff;
-    }
+	if (tcdCycle != 0 && tcdCountEnable != 0) {
+		tcdCycleCount += cycles;
+		if (tcdCycleCount >= tcdCycle && (g_debug == -1 || debugTcdEnable)) {
+			AssertIrq((int)(IrqType::TCD));
+			tcdCycleCount -= tcdCycle;
+			reg[0x14] |= 0x20;
+		}
+		reg[0x15] = tcdSetVal - (tcdCycleCount / ps);
+	}
 
-    // TCF　サウンド
-    if ((reg[0x19] & (uint8_t)(RegSound16::DATA)) != 0) {
-        ps = reg[0x19] & (uint8_t)(RegSound16::PRESCALE);
-        ps = GetPrescale(ps >> 3);
-        double t = (double)ps / CLOCK;
+	// TCE　リアルタイム
+	ps = reg[0x16] & (uint8_t)(RegSound16::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	int tceCycle = ((tceHSetVal << 8) + tceLSetVal) * ps;
 
-        int regVal = (reg[0x1a] << 8) + reg[0x1b];
-        regVal -= (int)(tickTime / t);
-        if (regVal < 0) {
-            int setVal = (tceHSetVal << 8) + tceLSetVal;
-            setVal += regVal;
-            reg[0x1a] = setVal >> 8;
-            reg[0x1b] = setVal & 0xff;
-            if (g_debug == -1 || debugTcfEnable) AssertIrq((int)(IrqType::TCF));
-            reg[0x19] |= 0x20;
-        }
-        else {
-            reg[0x1a] = regVal >> 8;
-            reg[0x1b] = regVal & 0xff;
-        }
-    }
+	if (tceCycle != 0 && tceCountEnable == 1) {
+		tceCycleCount += cycles;
+		if (tceCycleCount >= tceCycle && (g_debug == -1 || debugTceEnable)) {
+			AssertIrq((int)(IrqType::TCE));
+			tceCycleCount -= tceCycle;
+			reg[0x16] |= 0x20;
+		}
+		int c = ((tceHSetVal << 8) + tceLSetVal) - (tceCycleCount / ps);
+		reg[0x17] = c >> 8;
+		reg[0x18] = c & 0xff;
+	}
+
+	// TCF　サウンド
+	ps = reg[0x19] & (uint8_t)(RegSound16::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	int tcfCycle = ((tcfHSetVal << 8) + tcfLSetVal) * ps;
+
+	if (tcfCycle != 0 && tcfCountEnable == 1) {
+		tcfCycleCount += cycles;
+		if (tcfCycleCount >= tcfCycle && (g_debug == -1 || debugTcfEnable)) {
+			AssertIrq((int)(IrqType::TCF));
+			tcfCycleCount -= tcfCycle;
+			reg[0x19] |= 0x20;
+		}
+		int c = ((tcfHSetVal << 8) + tcfLSetVal) - (tcfCycleCount / ps);
+		reg[0x1a] = c >> 8;
+		reg[0x1b] = c & 0xff;
+	}
 }
 
 
@@ -337,70 +325,70 @@ void Mn1271::TickTimerCounter(int cycles)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::AssertIrq(int type)
 {
-    switch (type)
-    {
-        case (int)(IrqType::KON) :
-            if (reg[0x1e] & (uint8_t)Reg1e::PI0_MASK) {
-                reg[0x1c] |= (uint8_t)Reg1c::PI0_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-        case (int)(IrqType::SYSINT) :
-            if (reg[0x1e] & (uint8_t)Reg1e::PI1_MASK) {
-                reg[0x1c] |= (uint8_t)Reg1c::PI1_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-        case (int)(IrqType::USERINT) :
-            if (reg[0x1e] & (uint8_t)Reg1e::PI2_MASK) {
-                reg[0x1c] |= (uint8_t)Reg1c::PI2_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-        case (int)(IrqType::SERIAL) :
-            if (reg[0x1e] & (uint8_t)Reg1e::SERIAL_MASK) {
-                reg[0x1c] |= (uint8_t)Reg1c::SERIAL_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-        case (int)(IrqType::TCA) :
-            if (reg[0x1f] & (uint8_t)Reg1f::TCA_MASK) {
-                reg[0x1d] |= (uint8_t)Reg1d::TCA_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-        case (int)(IrqType::TCB) :
-            if (reg[0x1f] & (uint8_t)Reg1f::TCB_MASK) {
-                reg[0x1d] |= (uint8_t)Reg1d::TCB_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-        case (int)(IrqType::TCC) :
-            if (reg[0x1f] & (uint8_t)Reg1f::TCC_MASK) {
-                reg[0x1d] |= (uint8_t)Reg1d::TCC_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-        case (int)(IrqType::TCD) :
-            if (reg[0x1f] & (uint8_t)Reg1f::TCD_MASK) {
-                reg[0x1d] |= (uint8_t)Reg1d::TCD_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-        case (int)(IrqType::TCE) :
-            if (reg[0x1f] & (uint8_t)Reg1f::TCE_MASK) {
-                reg[0x1d] |= (uint8_t)Reg1d::TCE_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-        case (int)(IrqType::TCF) :
-            if (reg[0x1f] & (uint8_t)Reg1f::TCF_MASK) {
-                reg[0x1d] |= (uint8_t)Reg1d::TCF_STAT;
-                sys.pCpu->irq();
-            }
-            break;
-    }
-    SetIrqFlag();
+	switch (type)
+	{
+	case (int)(IrqType::KON) :
+		if (reg[0x1e] & (uint8_t)Reg1e::PI0_MASK) {
+			reg[0x1c] |= (uint8_t)Reg1c::PI0_STAT;
+			sys.pCpu->irq();
+		}
+							 break;
+	case (int)(IrqType::SYSINT) :
+		if (reg[0x1e] & (uint8_t)Reg1e::PI1_MASK) {
+			reg[0x1c] |= (uint8_t)Reg1c::PI1_STAT;
+			sys.pCpu->irq();
+		}
+								break;
+	case (int)(IrqType::USERINT) :
+		if (reg[0x1e] & (uint8_t)Reg1e::PI2_MASK) {
+			reg[0x1c] |= (uint8_t)Reg1c::PI2_STAT;
+			sys.pCpu->irq();
+		}
+								 break;
+	case (int)(IrqType::SERIAL) :
+		if (reg[0x1e] & (uint8_t)Reg1e::SERIAL_MASK) {
+			reg[0x1c] |= (uint8_t)Reg1c::SERIAL_STAT;
+			sys.pCpu->irq();
+		}
+								break;
+	case (int)(IrqType::TCA) :
+		if (reg[0x1f] & (uint8_t)Reg1f::TCA_MASK) {
+			reg[0x1d] |= (uint8_t)Reg1d::TCA_STAT;
+			sys.pCpu->irq();
+		}
+							 break;
+	case (int)(IrqType::TCB) :
+		if (reg[0x1f] & (uint8_t)Reg1f::TCB_MASK) {
+			reg[0x1d] |= (uint8_t)Reg1d::TCB_STAT;
+			sys.pCpu->irq();
+		}
+							 break;
+	case (int)(IrqType::TCC) :
+		if (reg[0x1f] & (uint8_t)Reg1f::TCC_MASK) {
+			reg[0x1d] |= (uint8_t)Reg1d::TCC_STAT;
+			sys.pCpu->irq();
+		}
+							 break;
+	case (int)(IrqType::TCD) :
+		if (reg[0x1f] & (uint8_t)Reg1f::TCD_MASK) {
+			reg[0x1d] |= (uint8_t)Reg1d::TCD_STAT;
+			sys.pCpu->irq();
+		}
+							 break;
+	case (int)(IrqType::TCE) :
+		if (reg[0x1f] & (uint8_t)Reg1f::TCE_MASK) {
+			reg[0x1d] |= (uint8_t)Reg1d::TCE_STAT;
+			sys.pCpu->irq();
+		}
+							 break;
+	case (int)(IrqType::TCF) :
+		if (reg[0x1f] & (uint8_t)Reg1f::TCF_MASK) {
+			reg[0x1d] |= (uint8_t)Reg1d::TCF_STAT;
+			sys.pCpu->irq();
+		}
+							 break;
+	}
+	SetIrqFlag();
 }
 
 
@@ -411,14 +399,14 @@ void Mn1271::AssertIrq(int type)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::SetIrqFlag()
 {
-    if ((reg[0x1c] & 0x7f) || (reg[0x1d] & 0x7f)) {
-        reg[0x1c] |= 0x80;
-        reg[0x1d] |= 0x80;
-    }
-    else {
-        reg[0x1c] &= 0x7f;
-        reg[0x1d] &= 0x7f;
-    }
+	if ((reg[0x1c] & 0x7f) || (reg[0x1d] & 0x7f)) {
+		reg[0x1c] |= 0x80;
+		reg[0x1d] |= 0x80;
+	}
+	else {
+		reg[0x1c] &= 0x7f;
+		reg[0x1d] &= 0x7f;
+	}
 }
 
 
@@ -429,141 +417,139 @@ void Mn1271::SetIrqFlag()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 uint8_t Mn1271::Read(uint8_t r)
 {
-    uint8_t b = 0;
+	uint8_t b = 0;
 
-    if (r < 0 || r > 0x1f) return 0;
+	if (r < 0 || r > 0x1f) return 0;
 
-    switch (r)
-    {
-        case 0:
-            b = reg[r];
-            break;
-        case 1:
-            b = reg[r];
-            break;
-        case 2:
-            b = reg[r];
-            break;
-        case 3:
-            if ((g_prOutput == (int)PrinterOutput::TEXT) ||
-                ((g_prOutput == (int)PrinterOutput::RAW) && (g_prMaker == (int)PrinterMaker::PANASONIC)))
-                // Panasonic
-                b = reg[r] | 0x30;
-            else
-                // EPSON
-                b = reg[r] | 0x10;
-            break;
-        case 4:
-            b = reg[r];
-            break;
-        case 5:
-            b = reg[r];
-            break;
-        case 6:
-            b = reg[r];
-            break;
-        case 7:
-            Reg7_read();
-            b = reg[r];
-            break;
-        case 8:
-            b = reg[r];
-            break;
-        case 9:
-            b = reg[r];
-            break;
-        case 0xa:
-            b = reg[r];
-            break;
-        case 0xb:
-            b = reg[r];
-            break;
-        case 0xc:
-            b = reg[r] | 0x20; // SAVE用の細工
-            break;
-        case 0xd:
-            b = reg[r];
-            break;
-        case 0x0e:
-            b = reg[r];
-            reg[r] &= ~(uint8_t)(Reg0e::BORROW);
-            reg[0x1d] &= 0xfe;
-            SetIrqFlag();
-            break;
-        case 0xf:
-            b = reg[r];
-            break;
-        case 0x10:
-            b = reg[r];
-            reg[r] &= ~(uint8_t)(Reg0e::BORROW);
-            reg[0x1d] &= 0xfd;
-            SetIrqFlag();
-            break;
-        case 0x11:
-            b = reg[r];
-            break;
-        case 0x12:
-            b = reg[r];
-            reg[r] &= ~(uint8_t)(RegSound8::BORROW);
-            reg[0x1d] &= 0xfb;
-            SetIrqFlag();
-            break;
-        case 0x13:
-            b = reg[r];
-            break;
-        case 0x14:
-            b = reg[r];
-            reg[r] &= ~(uint8_t)(RegSound8::BORROW);
-            reg[0x1d] &= 0xf7;
-            SetIrqFlag();
-            break;
-        case 0x15:
-            b = reg[r];
-            break;
-        case 0x16:
-            b = reg[r];
-            reg[r] &= ~(uint8_t)(RegSound16::BORROW);
-            reg[0x1d] &= 0xef;
-            SetIrqFlag();
-            break;
-        case 0x17:
-            b = reg[r];
-            reg18ReadBuf = reg[0x18];
-            break;
-        case 0x18:
-            b = reg[r];
-            //b = reg18ReadBuf;
-            break;
-        case 0x19:
-            b = reg[r];
-            reg[r] &= ~(uint8_t)(RegSound16::BORROW);
-            reg[0x1d] &= 0xdf;
-            SetIrqFlag();
-            break;
-        case 0x1a:
-            b = reg[r];
-            reg1bReadBuf = reg[0x1b];
-            break;
-        case 0x1b:
-            b = reg[r];
-            //b = reg1bReadBuf;
-            break;
-        case 0x1c:
-            b = reg[r];
-            reg[0x1c] = 0;
-            SetIrqFlag();
-            break;
-        case 0x1d:
-            b = reg[r];
-            break;
-        case 0x1e:
-            b = reg[r];
-            break;
-        case 0x1f:
-            b = reg[r];
-            break;
-    }
-    return b;
+	switch (r)
+	{
+	case 0:
+		b = reg[r];
+		break;
+	case 1:
+		b = reg[r];
+		break;
+	case 2:
+		b = reg[r];
+		break;
+	case 3:
+		if ((g_prOutput == (int)PrinterOutput::TEXT) ||
+			((g_prOutput == (int)PrinterOutput::RAW) && (g_prMaker == (int)PrinterMaker::PANASONIC)))
+			// Panasonic
+			b = reg[r] | 0x30;
+		else
+			// EPSON
+			b = reg[r] | 0x10;
+		break;
+	case 4:
+		b = reg[r];
+		break;
+	case 5:
+		b = reg[r];
+		break;
+	case 6:
+		b = reg[r];
+		break;
+	case 7:
+		Reg7_read();
+		b = reg[r];
+		break;
+	case 8:
+		b = reg[r];
+		break;
+	case 9:
+		b = reg[r];
+		break;
+	case 0xa:
+		b = reg[r];
+		break;
+	case 0xb:
+		b = reg[r];
+		break;
+	case 0xc:
+		b = reg[r] | 0x20; // SAVE用の細工
+		break;
+	case 0xd:
+		b = reg[r];
+		break;
+	case 0x0e:
+		b = reg[r];
+		reg[r] &= ~(uint8_t)(Reg0e::BORROW);
+		reg[0x1d] &= 0xfe;
+		SetIrqFlag();
+		break;
+	case 0xf:
+		b = reg[r];
+		break;
+	case 0x10:
+		b = reg[r];
+		reg[r] &= ~(uint8_t)(Reg0e::BORROW);
+		reg[0x1d] &= 0xfd;
+		SetIrqFlag();
+		break;
+	case 0x11:
+		b = reg[r];
+		break;
+	case 0x12:
+		b = reg[r];
+		reg[r] &= ~(uint8_t)(RegSound8::BORROW);
+		reg[0x1d] &= 0xfb;
+		SetIrqFlag();
+		break;
+	case 0x13:
+		b = reg[r];
+		break;
+	case 0x14:
+		b = reg[r];
+		reg[r] &= ~(uint8_t)(RegSound8::BORROW);
+		reg[0x1d] &= 0xf7;
+		SetIrqFlag();
+		break;
+	case 0x15:
+		b = reg[r];
+		break;
+	case 0x16:
+		b = reg[r];
+		reg[r] &= ~(uint8_t)(RegSound16::BORROW);
+		reg[0x1d] &= 0xef;
+		SetIrqFlag();
+		break;
+	case 0x17:
+		b = reg[r];
+		reg18ReadBuf = reg[0x18];
+		break;
+	case 0x18:
+		b = reg[r];
+		break;
+	case 0x19:
+		b = reg[r];
+		reg[r] &= ~(uint8_t)(RegSound16::BORROW);
+		reg[0x1d] &= 0xdf;
+		SetIrqFlag();
+		break;
+	case 0x1a:
+		b = reg[r];
+		reg1bReadBuf = reg[0x1b];
+		break;
+	case 0x1b:
+		b = reg[r];
+		break;
+	case 0x1c:
+		b = reg[r];
+		reg[0x1c] = 0;
+		SetIrqFlag();
+		break;
+	case 0x1d:
+		b = reg[r];
+		break;
+	case 0x1e:
+		b = reg[r];
+		break;
+	case 0x1f:
+		b = reg[r];
+		break;
+	}
+	return b;
 }
 
 
@@ -574,116 +560,116 @@ uint8_t Mn1271::Read(uint8_t r)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 uint8_t Mn1271::ReadForDebug(uint8_t r)
 {
-    uint8_t b = 0;
+	uint8_t b = 0;
 
-    if (r < 0 || r > 0x1f) return 0;
+	if (r < 0 || r > 0x1f) return 0;
 
-    switch (r)
-    {
-        case 0:
-            b = reg[r];
-            break;
-        case 1:
-            b = reg[r];
-            break;
-        case 2:
-            b = reg[r];
-            break;
-        case 3:
-            if ((g_prOutput == (int)PrinterOutput::TEXT) ||
-                ((g_prOutput == (int)PrinterOutput::RAW) && (g_prMaker == (int)PrinterMaker::PANASONIC)))
-                // Panasonic
-                b = reg[r] | 0x30;
-            else
-                // EPSON
-                b = reg[r] | 0x10;
-            break;
-        case 4:
-            b = reg[r];
-            break;
-        case 5:
-            b = reg[r];
-            break;
-        case 6:
-            b = reg[r];
-            break;
-        case 7:
-            b = reg[r];
-            break;
-        case 8:
-            b = reg[r];
-            break;
-        case 9:
-            b = reg[r];
-            break;
-        case 0xa:
-            b = reg[r];
-            break;
-        case 0xb:
-            b = reg[r];
-            break;
-        case 0xc:
-            b = reg[r];
-            break;
-        case 0xd:
-            b = reg[r];
-            break;
-        case 0x0e:
-            b = reg[r];
-            break;
-        case 0xf:
-            b = reg[r];
-            break;
-        case 0x10:
-            b = reg[r];
-            break;
-        case 0x11:
-            b = reg[r];
-            break;
-        case 0x12:
-            b = reg[r];
-            break;
-        case 0x13:
-            b = reg[r];
-            break;
-        case 0x14:
-            b = reg[r];
-            break;
-        case 0x15:
-            b = reg[r];
-            break;
-        case 0x16:
-            b = reg[r];
-            break;
-        case 0x17:
-            b = reg[r];
-            break;
-        case 0x18:
-            b = reg[r];
-            break;
-        case 0x19:
-            b = reg[r];
-            break;
-        case 0x1a:
-            b = reg[r];
-            break;
-        case 0x1b:
-            b = reg[r];
-            break;
-        case 0x1c:
-            b = reg[r];
-            break;
-        case 0x1d:
-            b = reg[r];
-            break;
-        case 0x1e:
-            b = reg[r];
-            break;
-        case 0x1f:
-            b = reg[r];
-            break;
-    }
-    return b;
+	switch (r)
+	{
+	case 0:
+		b = reg[r];
+		break;
+	case 1:
+		b = reg[r];
+		break;
+	case 2:
+		b = reg[r];
+		break;
+	case 3:
+		if ((g_prOutput == (int)PrinterOutput::TEXT) ||
+			((g_prOutput == (int)PrinterOutput::RAW) && (g_prMaker == (int)PrinterMaker::PANASONIC)))
+			// Panasonic
+			b = reg[r] | 0x30;
+		else
+			// EPSON
+			b = reg[r] | 0x10;
+		break;
+	case 4:
+		b = reg[r];
+		break;
+	case 5:
+		b = reg[r];
+		break;
+	case 6:
+		b = reg[r];
+		break;
+	case 7:
+		b = reg[r];
+		break;
+	case 8:
+		b = reg[r];
+		break;
+	case 9:
+		b = reg[r];
+		break;
+	case 0xa:
+		b = reg[r];
+		break;
+	case 0xb:
+		b = reg[r];
+		break;
+	case 0xc:
+		b = reg[r];
+		break;
+	case 0xd:
+		b = reg[r];
+		break;
+	case 0x0e:
+		b = reg[r];
+		break;
+	case 0xf:
+		b = reg[r];
+		break;
+	case 0x10:
+		b = reg[r];
+		break;
+	case 0x11:
+		b = reg[r];
+		break;
+	case 0x12:
+		b = reg[r];
+		break;
+	case 0x13:
+		b = reg[r];
+		break;
+	case 0x14:
+		b = reg[r];
+		break;
+	case 0x15:
+		b = reg[r];
+		break;
+	case 0x16:
+		b = reg[r];
+		break;
+	case 0x17:
+		b = reg[r];
+		break;
+	case 0x18:
+		b = reg[r];
+		break;
+	case 0x19:
+		b = reg[r];
+		break;
+	case 0x1a:
+		b = reg[r];
+		break;
+	case 0x1b:
+		b = reg[r];
+		break;
+	case 0x1c:
+		b = reg[r];
+		break;
+	case 0x1d:
+		b = reg[r];
+		break;
+	case 0x1e:
+		b = reg[r];
+		break;
+	case 0x1f:
+		b = reg[r];
+		break;
+	}
+	return b;
 }
 
 
@@ -694,13 +680,13 @@ uint8_t Mn1271::ReadForDebug(uint8_t r)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg7_read()
 {
-    uint8_t b;
-    bRead = true;
-    if ((reg[7] & 0x40) != 0 && g_pTapeFormat != nullptr) {
-        b = reg[7] & 0x7f;
-        b |= g_pTapeFormat->GetLoadData() * 0x80;
-        reg[7] = b;
-    }
+	uint8_t b;
+	bRead = true;
+	if ((reg[7] & 0x40) != 0 && g_pTapeFormat != nullptr) {
+		b = reg[7] & 0x7f;
+		b |= g_pTapeFormat->GetLoadData() * 0x80;
+		reg[7] = b;
+	}
 }
 
 
@@ -711,178 +697,184 @@ void Mn1271::Reg7_read()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Write(uint8_t r, uint8_t val)
 {
-    if (r < 0 || r > 0x1f) return;
+	if (r < 0 || r > 0x1f) return;
 
-    switch (r)
-    {
-        case 0:
-            reg[r] = val;
-            break;
-        case 1:
-            reg[r] = val;
-            break;
-        case 2:
-            reg[r] = val;
-            break;
-        case 3:
-            reg[r] = val;
-            Reg3_write(val);
-            break;
-        case 4:
-            reg[r] = val;
-            break;
-        case 5:
-            reg[r] = val;
-            Reg5_write(val);
-            break;
-        case 6:
-            reg[r] = val;
-            break;
-        case 7:
-            reg[r] = val;
-            Reg7_write(val);
-            break;
-        case 8:
-            reg[r] = val & 0x77;
-            break;
-        case 9:
-            reg[r] = val & 0x77;
-            Reg9_write(val);
-            break;
-        case 0xa:
-            reg[r] = val & 0x87;
-            break;
-        case 0xb:
-            reg[r] = val & 0x9f;
-            break;
-        case 0xc:
-            reg[r] = val;
-            SetIrqMask1(6, (val & 64) ? 1 : 0);
-            break;
-        case 0xd:
-            reg[r] = val;
-            Reg0d_write(val);
-            break;
-        case 0xe:
-            reg[r] = val & 0x59;
-            reg[0x1d] &= 0xfe;
-            SetIrqFlag();
+	switch (r)
+	{
+	case 0:
+		reg[r] = val;
+		break;
+	case 1:
+		reg[r] = val;
+		break;
+	case 2:
+		reg[r] = val;
+		break;
+	case 3:
+		reg[r] = val;
+		Reg3_write(val);
+		break;
+	case 4:
+		reg[r] = val;
+		break;
+	case 5:
+		reg[r] = val;
+		Reg5_write(val);
+		break;
+	case 6:
+		reg[r] = val;
+		break;
+	case 7:
+		reg[r] = val;
+		Reg7_write(val);
+		break;
+	case 8:
+		reg[r] = val & 0x77;
+		break;
+	case 9:
+		reg[r] = val & 0x77;
+		Reg9_write(val);
+		break;
+	case 0xa:
+		reg[r] = val & 0x87;
+		break;
+	case 0xb:
+		reg[r] = val & 0x9f;
+		break;
+	case 0xc:
+		reg[r] = val;
+		SetIrqMask1(6, (val & 64) ? 1 : 0);
+		break;
+	case 0xd:
+		reg[r] = val;
+		Reg0d_write(val);
+		break;
+	case 0xe:
+		reg[r] = val & 0x59;
+		reg[0x1d] &= 0xfe;
+		SetIrqFlag();
 
-            tcaCycleCount = 0;
-            Reg0e_write(val);
-            SetIrqMask2(0, (val & 64) ? 1 : 0);
-            break;
-        case 0xf:
-            reg[r] = val;
-            tcaSetVal = val;
-            if (val == 0)
-                tcaSetVal = 0x100;
-            tcaCycleCount = 0;
-            break;
-        case 0x10:
-            reg[r] = val & 0x59;
-            reg[0x1d] &= 0xfd;
-            SetIrqFlag();
+		tcaCycleCount = 0;
+		Reg0e_write(val);
+		SetIrqMask2(0, (val & 64) ? 1 : 0);
+		break;
+	case 0xf:
+		reg[r] = val;
+		tcaSetVal = val;
+		if (val == 0)
+			tcaSetVal = 0x100;
+		tcaCycleCount = 0;
+		break;
+	case 0x10:
+		reg[r] = val & 0x59;
+		reg[0x1d] &= 0xfd;
+		SetIrqFlag();
 
-            tcbCycleCount = 0;
-            Reg10_write(val);
-            SetIrqMask2(1, (val & 64) ? 1 : 0);
-            break;
-        case 0x11:
-            reg[r] = val;
-            tcbSetVal = val;
-            if (val == 0)
-                tcbSetVal = 0x100;
-            tcbCycleCount = 0;
-            break;
-        case 0x12:
-            reg[r] = val & 0x5f;
-            reg[0x1d] &= 0xfb;
-            SetIrqFlag();
+		tcbCycleCount = 0;
+		Reg10_write(val);
+		SetIrqMask2(1, (val & 64) ? 1 : 0);
+		break;
+	case 0x11:
+		reg[r] = val;
+		tcbSetVal = val;
+		if (val == 0)
+			tcbSetVal = 0x100;
+		tcbCycleCount = 0;
+		break;
+	case 0x12:
+		reg[r] = val & 0x5f;
+		reg[0x1d] &= 0xfb;
+		SetIrqFlag();
 
-            Reg12_write(val);
-            SetIrqMask2(2, (val & 64) ? 1 : 0);
-            break;
-        case 0x13:
-            reg[r] = val;
-            tccSetVal = val;
-            if (val == 0)
-                tccSetVal = 0x100;
-            SetSoundData(0);
-            break;
-        case 0x14:
-            reg[r] = val & 0x5f;
-            reg[0x1d] &= 0xf7;
-            SetIrqFlag();
+		tccCycleCount = 0;
+		Reg12_write(val);
+		SetIrqMask2(2, (val & 64) ? 1 : 0);
+		break;
+	case 0x13:
+		reg[r] = val;
+		tccSetVal = val;
+		if (val == 0)
+			tccSetVal = 0x100;
+		tccCycleCount = 0;
+		SetSoundData(0);
+		break;
+	case 0x14:
+		reg[r] = val & 0x5f;
+		reg[0x1d] &= 0xf7;
+		SetIrqFlag();
 
-            Reg14_write(val);
-            SetIrqMask2(3, (val & 64) ? 1 : 0);
-            break;
-        case 0x15:
-            reg[r] = val;
-            tcdSetVal = val;
-            if (val == 0)
-                tcdSetVal = 0x100;
-            SetSoundData(1);
-            break;
-        case 0x16:
-            reg[r] = val & 0x5f;
-            reg[0x1d] &= 0xef;
-            SetIrqFlag();
+		tcdCycleCount = 0;
+		Reg14_write(val);
+		SetIrqMask2(3, (val & 64) ? 1 : 0);
+		break;
+	case 0x15:
+		reg[r] = val;
+		tcdSetVal = val;
+		if (val == 0)
+			tcdSetVal = 0x100;
+		tcdCycleCount = 0;
+		SetSoundData(1);
+		break;
+	case 0x16:
+		reg[r] = val & 0x5f;
+		reg[0x1d] &= 0xef;
+		SetIrqFlag();
 
-            tceCycleCount = 0;
-            Reg16_write(val);
-            SetIrqMask2(4, (val & 64) ? 1 : 0);
-            break;
-        case 0x17:
-            reg17WriteBuf = val;
-            break;
-        case 0x18:
-            reg[0x17] = reg17WriteBuf;
-            tceHSetVal = reg17WriteBuf;
+		tceCycleCount = 0;
+		Reg16_write(val);
+		SetIrqMask2(4, (val & 64) ? 1 : 0);
+		break;
+	case 0x17:
+		reg17WriteBuf = val;
+		break;
+	case 0x18:
+		reg[0x17] = reg17WriteBuf;
+		tceHSetVal = reg17WriteBuf;
 
-            reg[r] = val;
-            tceLSetVal = val;
+		reg[r] = val;
+		tceLSetVal = val;
 
-            if (tceHSetVal == 0 && tceLSetVal == 0)
-                tceHSetVal = 0x100;
-            tceCycleCount = 0;
-            break;
-        case 0x19:
-            reg[r] = val & 0x5f;
-            reg[0x1d] &= 0xdf;
-            SetIrqFlag();
+		if (tceHSetVal == 0 && tceLSetVal == 0)
+			tceHSetVal = 0x100;
+		tceCycleCount = 0;
+		break;
+	case 0x19:
+		reg[r] = val & 0x5f;
+		reg[0x1d] &= 0xdf;
+		SetIrqFlag();
 
-            Reg19_write(val);
-            SetIrqMask2(5, (val & 64) ? 1 : 0);
-            break;
-        case 0x1a:
-            reg1aWriteBuf = val;
-            break;
-        case 0x1b:
-            reg[0x1a] = reg1aWriteBuf;
-            tcfHSetVal = reg1aWriteBuf;
+		tcfCycleCount = 0;
+		Reg19_write(val);
+		SetIrqMask2(5, (val & 64) ? 1 : 0);
+		break;
+	case 0x1a:
+		reg1aWriteBuf = val;
+		break;
+	case 0x1b:
+		reg[0x1a] = reg1aWriteBuf;
+		tcfHSetVal = reg1aWriteBuf;
 
-            reg[r] = val;
-            tcfLSetVal = val;
+		reg[r] = val;
+		tcfLSetVal = val;
 
-            if (tcfHSetVal == 0 && tcfLSetVal == 0)
-                tcfHSetVal = 0x100;
-            SetSoundData(2);
-            break;
-        case 0x1c:
-            break;
-        case 0x1d:
-            break;
-        case 0x1e:
-            reg[r] = val & 0x47;
-            Reg1e_write(val);
-            break;
-        case 0x1f:
-            reg[r] = val & 0x3f;
-            Reg1f_write(val);
-            break;
-    }
+		if (tcfHSetVal == 0 && tcfLSetVal == 0)
+			tcfHSetVal = 0x100;
+		tcfCycleCount = 0;
+		SetSoundData(2);
+		break;
+	case 0x1c:
+		break;
+	case 0x1d:
+		break;
+	case 0x1e:
+		reg[r] = val & 0x47;
+		Reg1e_write(val);
+		break;
+	case 0x1f:
+		reg[r] = val & 0x3f;
+		Reg1f_write(val);
+		break;
+	}
 }
 
 
@@ -893,10 +885,10 @@ void Mn1271::Write(uint8_t r, uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::SetIrqMask1(int bit, int value)
 {
-    uint8_t tmp = reg[0x1e];
-    int mask = ~(1 << bit);
-    tmp &= mask;
-    reg[0x1e] = tmp | (value << bit);
+	uint8_t tmp = reg[0x1e];
+	int mask = ~(1 << bit);
+	tmp &= mask;
+	reg[0x1e] = tmp | (value << bit);
 }
 
 
@@ -907,10 +899,10 @@ void Mn1271::SetIrqMask1(int bit, int value)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::SetIrqMask2(int bit, int value)
 {
-    uint8_t tmp = reg[0x1f];
-    int mask = ~(1 << bit);
-    tmp &= mask;
-    reg[0x1f] = tmp | (value << bit);
+	uint8_t tmp = reg[0x1f];
+	int mask = ~(1 << bit);
+	tmp &= mask;
+	reg[0x1f] = tmp | (value << bit);
 }
 
 
@@ -921,7 +913,7 @@ void Mn1271::SetIrqMask2(int bit, int value)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg3_write(uint8_t val)
 {
-    sys.pMn1544->SetKeyState(val);
+	sys.pMn1544->SetKeyState(val);
 }
 
 
@@ -933,7 +925,7 @@ void Mn1271::Reg3_write(uint8_t val)
 void Mn1271::Reg5_write(uint8_t val)
 {
 #ifndef _ANDROID
-    val = ~val;
+	val = ~val;
 
 	sys.pPrinter->Write(val);
 
@@ -949,42 +941,42 @@ void Mn1271::Reg5_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg7_write(uint8_t val)
 {
-    if ((val & 0x40) != 0 && bRemoteOn == false) {
-        if (g_bOverClockLoad) {
-            preCpuScale = g_cpuScale;
-            g_cpuScale = CPU_SPEED_MAX;
-        }
-        bRemoteOn = true;
-        if (g_pTapeFormat != nullptr)
-            g_pTapeFormat->remoteOn();
-    }
+	if ((val & 0x40) != 0 && bRemoteOn == false) {
+		if (g_bOverClockLoad) {
+			preCpuScale = g_cpuScale;
+			g_cpuScale = CPU_SPEED_MAX;
+		}
+		bRemoteOn = true;
+		if (g_pTapeFormat != nullptr)
+			g_pTapeFormat->remoteOn();
+	}
 
-    if ((val & 0x40) == 0 && bRemoteOn == true) {
-        if (g_bOverClockLoad) {
-            g_cpuScale = preCpuScale;
-        }
-        bRemoteOn = false;
-        if (g_pTapeFormat != nullptr)
-            g_pTapeFormat->remoteOff();
-    }
+	if ((val & 0x40) == 0 && bRemoteOn == true) {
+		if (g_bOverClockLoad) {
+			g_cpuScale = preCpuScale;
+		}
+		bRemoteOn = false;
+		if (g_pTapeFormat != nullptr)
+			g_pTapeFormat->remoteOff();
+	}
 
-    // SAVE終了時のファイル書き出し
-    if (bSaving && (val & 0x40) == 0) {
-        bSaving = false;
+	// SAVE終了時のファイル書き出し
+	if (bSaving && (val & 0x40) == 0) {
+		bSaving = false;
 
-        AnalyzeWave a(saveData);
-        try {
-            a.AnalyzeWavData();
-        }
-        catch (int){
-            delete saveData;
-            saveData = nullptr;
-            return;
-        }
-        a.WriteCjrFile();
-        delete saveData;
-        saveData = nullptr;
-    }
+		AnalyzeWave a(saveData);
+		try {
+			a.AnalyzeWavData();
+		}
+		catch (int) {
+			delete saveData;
+			saveData = nullptr;
+			return;
+		}
+		a.WriteCjrFile();
+		delete saveData;
+		saveData = nullptr;
+	}
 }
 
 
@@ -995,9 +987,9 @@ void Mn1271::Reg7_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg9_write(uint8_t val)
 {
-    if (val & (uint8_t)Reg9::KON) {
-        AssertIrq((int)(IrqType::KON));
-    }
+	if (val & (uint8_t)Reg9::KON) {
+		AssertIrq((int)(IrqType::KON));
+	}
 }
 
 
@@ -1008,27 +1000,27 @@ void Mn1271::Reg9_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg0d_write(uint8_t val)
 {
-    bWrite = true;
+	bWrite = true;
 
-    if (g_pTapeFormat == nullptr || (g_pTapeFormat != nullptr && !_tcsncmp(g_pTapeFormat->GetType(), _T("CJR"), 3))) {
-        // CJR書き出し
-        if ((reg[0x07] & 0x40) != 0) {
-            bSaving = true;
-            if (saveData == nullptr)
-            {
-                saveData = new vector<uint8_t>();
-                saveData->push_back(val);
-            }
-            else {
-                saveData->push_back(val);
-            }
-            reg[0x0c] |= 0x20;
-        }
-    }
-    else {
-        // RAW書き出し
-        g_pTapeFormat->WriteByte(val);
-    }
+	if (g_pTapeFormat == nullptr || (g_pTapeFormat != nullptr && !_tcsncmp(g_pTapeFormat->GetType(), _T("CJR"), 3))) {
+		// CJR書き出し
+		if ((reg[0x07] & 0x40) != 0) {
+			bSaving = true;
+			if (saveData == nullptr)
+			{
+				saveData = new vector<uint8_t>();
+				saveData->push_back(val);
+			}
+			else {
+				saveData->push_back(val);
+			}
+			reg[0x0c] |= 0x20;
+		}
+	}
+	else {
+		// RAW書き出し
+		g_pTapeFormat->WriteByte(val);
+	}
 }
 
 
@@ -1040,14 +1032,14 @@ void Mn1271::Reg0d_write(uint8_t val)
 void Mn1271::SoundOn()
 {
 #ifndef _ANDROID
-    for (int i = 0; i < 3; ++i)
+	for (int i = 0; i < 3; ++i)
 		pSecondary[i]->Play(0, 0, DSBPLAY_LOOPING);
 #else
-    SLresult result;
-    for (int i = 0; i < 3; ++i) {
-        if (bqPlayerPlay[i] != NULL)
-            result = (*bqPlayerPlay[i])->SetPlayState(bqPlayerPlay[i], SL_PLAYSTATE_PLAYING);
-    }
+	SLresult result;
+	for (int i = 0; i < 3; ++i) {
+		if (bqPlayerPlay[i] != NULL)
+			result = (*bqPlayerPlay[i])->SetPlayState(bqPlayerPlay[i], SL_PLAYSTATE_PLAYING);
+	}
 #endif
 	g_bSoundOn = true;
 }
@@ -1061,16 +1053,16 @@ void Mn1271::SoundOn()
 void Mn1271::SoundOff()
 {
 #ifndef _ANDROID
-    for (int i = 0; i < 3; ++i)
+	for (int i = 0; i < 3; ++i)
 		pSecondary[i]->Stop();
 #else
-    SLresult result;
-    for (int i = 0; i < 3; ++i) {
-        if (bqPlayerPlay[i] != NULL)
-            result = (*bqPlayerPlay[i])->SetPlayState(bqPlayerPlay[i], SL_PLAYSTATE_PAUSED);
-    }
+	SLresult result;
+	for (int i = 0; i < 3; ++i) {
+		if (bqPlayerPlay[i] != NULL)
+			result = (*bqPlayerPlay[i])->SetPlayState(bqPlayerPlay[i], SL_PLAYSTATE_PAUSED);
+	}
 #endif
-    g_bSoundOn = false;
+	g_bSoundOn = false;
 }
 
 
@@ -1081,22 +1073,22 @@ void Mn1271::SoundOff()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 int Mn1271::GetPrescale(int i)
 {
-    switch (i)
-    {
-        case 0:
-            return 1;
-            break;
-        case 1:
-            return 8;
-            break;
-        case 2:
-            return 64;
-            break;
-        case 3:
-            return 256;
-            break;
-    }
-    return 0;
+	switch (i)
+	{
+	case 0:
+		return 1;
+		break;
+	case 1:
+		return 8;
+		break;
+	case 2:
+		return 64;
+		break;
+	case 3:
+		return 256;
+		break;
+	}
+	return 0;
 }
 
 
@@ -1107,8 +1099,8 @@ int Mn1271::GetPrescale(int i)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg0e_write(uint8_t val)
 {
-    if (val == 0x01) reg[0x0c] |= 0x20; // SAVE用
-    tcaCountEnable = val & (uint8_t)(Reg0e::COUNT);
+	if (val == 0x01) reg[0x0c] |= 0x20; // SAVE用
+	tcaCountEnable = val & (uint8_t)(Reg0e::COUNT);
 }
 
 
@@ -1119,7 +1111,7 @@ void Mn1271::Reg0e_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg10_write(uint8_t val)
 {
-    tcbCountEnable = val & (uint8_t)(Reg0e::COUNT);
+	tcbCountEnable = val & (uint8_t)(Reg0e::COUNT);
 }
 
 
@@ -1130,45 +1122,45 @@ void Mn1271::Reg10_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::SetSoundData(int ch)
 {
-    uint8_t val;
-    int data, ps, f, c;
+	uint8_t val;
+	int data, ps, f, c;
 
-    switch (ch) {
-        case 0:
-            val = reg[0x12];
-            data = val & (uint8_t)(RegSound8::DATA);
-            ps = val & (uint8_t)(RegSound8::PRESCALE);
-            ps = GetPrescale(ps >> 3);
-            ps *= 2; // サウンド機能のみ1/2の周波数
+	switch (ch) {
+	case 0:
+		val = reg[0x12];
+		data = val & (uint8_t)(RegSound8::DATA);
+		ps = val & (uint8_t)(RegSound8::PRESCALE);
+		ps = GetPrescale(ps >> 3);
+		ps *= 2; // サウンド機能のみ1/2の周波数
 
-            c = tccSetVal;
-            f = (int)(CLOCK / ((float)c * ps));
-            SetFrequency(0, f);
-            break;
-        case 1:
-            val = reg[0x14];
-            data = val & (uint8_t)(RegSound8::DATA);
-            ps = val & (uint8_t)(RegSound8::PRESCALE);
-            ps = GetPrescale(ps >> 3);
-            ps *= 2; // サウンド機能のみ1/2の周波数
+		c = tccSetVal;
+		f = (int)(CLOCK / ((float)c * ps));
+		SetFrequency(0, f);
+		break;
+	case 1:
+		val = reg[0x14];
+		data = val & (uint8_t)(RegSound8::DATA);
+		ps = val & (uint8_t)(RegSound8::PRESCALE);
+		ps = GetPrescale(ps >> 3);
+		ps *= 2; // サウンド機能のみ1/2の周波数
 
-            c = tcdSetVal;
-            f = (int)(CLOCK / ((float)c * ps));
-            SetFrequency(1, f);
-            break;
-        case 2:
-            val = reg[0x19];
-            data = val & (uint8_t)(RegSound16::DATA);
-            ps = val & (uint8_t)(RegSound16::PRESCALE);
-            ps = GetPrescale(ps >> 3);
-            ps *= 2; // サウンド機能のみ1/2の周波数
+		c = tcdSetVal;
+		f = (int)(CLOCK / ((float)c * ps));
+		SetFrequency(1, f);
+		break;
+	case 2:
+		val = reg[0x19];
+		data = val & (uint8_t)(RegSound16::DATA);
+		ps = val & (uint8_t)(RegSound16::PRESCALE);
+		ps = GetPrescale(ps >> 3);
+		ps *= 2; // サウンド機能のみ1/2の周波数
 
-            c = tcfHSetVal << 8;
-            c += tcfLSetVal;
-            f = (int)(CLOCK / ((float)c * ps));
-            SetFrequency(2, f);
-            break;
-    }
+		c = tcfHSetVal << 8;
+		c += tcfLSetVal;
+		f = (int)(CLOCK / ((float)c * ps));
+		SetFrequency(2, f);
+		break;
+	}
 }
 
 
@@ -1179,28 +1171,29 @@ void Mn1271::SetSoundData(int ch)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg12_write(uint8_t val)
 {
-    int data = val & (uint8_t)(RegSound8::DATA);
-    int ps = val & (uint8_t)(RegSound8::PRESCALE);
-    ps = GetPrescale(ps >> 3);
-    ps *= 2; // サウンド機能のみ1/2の周波数
+	int data = val & (uint8_t)(RegSound8::DATA);
+	tccCountEnable = data ? 1 : 0;
+	int ps = val & (uint8_t)(RegSound8::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	ps *= 2; // サウンド機能のみ1/2の周波数
 
-    int f = 0;
-    unsigned int c = tccSetVal;
-    if (data == 6) {
-        PlaySound(0);
-        if (c != 0) {
-            f = (int)(CLOCK / ((float)c * ps));
-            if (ps == 128)
-                f -= (int)(0.030612244 * f - 2.020408163); // オンチを直す補正式
-            SetFrequency(0, f);
-        }
-        else {
-            StopSound(0);
-        }
-    }
-    else {
-        StopSound(0);
-    }
+	int f = 0;
+	unsigned int c = tccSetVal;
+	if (data == 6) {
+		PlaySound(0);
+		if (c != 0) {
+			f = (int)(CLOCK / ((float)c * ps));
+			if (ps == 128)
+				f -= (int)(0.030612244 * f - 2.020408163); // オンチを直す補正式
+			SetFrequency(0, f);
+		}
+		else {
+			StopSound(0);
+		}
+	}
+	else {
+		StopSound(0);
+	}
 }
 
 
@@ -1211,30 +1204,29 @@ void Mn1271::Reg12_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg14_write(uint8_t val)
 {
-    //val14 = val;
+	int data = val & (uint8_t)(RegSound8::DATA);
+	tcdCountEnable = data ? 1 : 0;
+	int ps = val & (uint8_t)(RegSound8::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	ps *= 2; // サウンド機能のみ1/2の周波数
 
-    int data = val & (uint8_t)(RegSound8::DATA);
-    int ps = val & (uint8_t)(RegSound8::PRESCALE);
-    ps = GetPrescale(ps >> 3);
-    ps *= 2; // サウンド機能のみ1/2の周波数
-
-    int f = 0;
-    unsigned int c = tcdSetVal;
-    if (data == 6) {
-        PlaySound(1);
-        if (c != 0) {
-            f = (int)(CLOCK / ((float)c * ps));
-            if (ps == 128)
-                f -= (int)(0.030612244 * f - 2.020408163); // オンチを直す補正式
-            SetFrequency(1, f);
-        }
-        else {
-            StopSound(1);
-        }
-    }
-    else {
-        StopSound(1);
-    }
+	int f = 0;
+	unsigned int c = tcdSetVal;
+	if (data == 6) {
+		PlaySound(1);
+		if (c != 0) {
+			f = (int)(CLOCK / ((float)c * ps));
+			if (ps == 128)
+				f -= (int)(0.030612244 * f - 2.020408163); // オンチを直す補正式
+			SetFrequency(1, f);
+		}
+		else {
+			StopSound(1);
+		}
+	}
+	else {
+		StopSound(1);
+	}
 }
 
 
@@ -1245,13 +1237,13 @@ void Mn1271::Reg14_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg16_write(uint8_t val)
 {
-    int data = val & (uint8_t)(RegSound16::DATA);
-    if (data == 0) {
-        tceCountEnable = 0;
-    }
-    else {
-        tceCountEnable = 1;
-    }
+	int data = val & (uint8_t)(RegSound16::DATA);
+	if (data == 0) {
+		tceCountEnable = 0;
+	}
+	else {
+		tceCountEnable = 1;
+	}
 }
 
 
@@ -1262,27 +1254,34 @@ void Mn1271::Reg16_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg19_write(uint8_t val)
 {
-    int data = val & (uint8_t)(RegSound16::DATA);
-    int ps = val & (uint8_t)(RegSound16::PRESCALE);
-    ps = GetPrescale(ps >> 3);
-    ps *= 2; // サウンド機能のみ1/2の周波数
+	int data = val & (uint8_t)(RegSound16::DATA);
+	if (data == 0) {
+		tcfCountEnable = 0;
+	}
+	else {
+		tcfCountEnable = 1;
+	}
 
-    int f = 0;
-    unsigned int c = tcfHSetVal << 8;
-    c += tcfLSetVal;
-    if (data == 6) {
-        PlaySound(2);
-        if (c != 0) {
-            f = (int)(CLOCK / ((float)c * ps));
-            SetFrequency(2, f);
-        }
-        else {
-            StopSound(2);
-        }
-    }
-    else {
-        StopSound(2);
-    }
+	int ps = val & (uint8_t)(RegSound16::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	ps *= 2; // サウンド機能のみ1/2の周波数
+
+	int f = 0;
+	unsigned int c = tcfHSetVal << 8;
+	c += tcfLSetVal;
+	if (data == 6) {
+		PlaySound(2);
+		if (c != 0) {
+			f = (int)(CLOCK / ((float)c * ps));
+			SetFrequency(2, f);
+		}
+		else {
+			StopSound(2);
+		}
+	}
+	else {
+		StopSound(2);
+	}
 }
 
 
@@ -1293,10 +1292,10 @@ void Mn1271::Reg19_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg1e_write(uint8_t val)
 {
-    if (val & 64)
-        reg[0xc] |= (uint8_t)Reg0e::IRQ;
-    else
-        reg[0xc] &= ~(uint8_t)Reg0e::IRQ;
+	if (val & 64)
+		reg[0xc] |= (uint8_t)Reg0e::IRQ;
+	else
+		reg[0xc] &= ~(uint8_t)Reg0e::IRQ;
 }
 
 
@@ -1307,35 +1306,35 @@ void Mn1271::Reg1e_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg1f_write(uint8_t val)
 {
-    if (val & 1)
-        reg[0xe] |= (uint8_t)Reg0e::IRQ;
-    else
-        reg[0xe] &= ~(uint8_t)Reg0e::IRQ;
+	if (val & 1)
+		reg[0xe] |= (uint8_t)Reg0e::IRQ;
+	else
+		reg[0xe] &= ~(uint8_t)Reg0e::IRQ;
 
-    if (val & 2)
-        reg[0x10] |= (uint8_t)Reg0e::IRQ;
-    else
-        reg[0x10] &= ~(uint8_t)Reg0e::IRQ;
+	if (val & 2)
+		reg[0x10] |= (uint8_t)Reg0e::IRQ;
+	else
+		reg[0x10] &= ~(uint8_t)Reg0e::IRQ;
 
-    if (val & 4)
-        reg[0x12] |= (uint8_t)RegSound8::IRQ;
-    else
-        reg[0x12] &= ~(uint8_t)RegSound8::IRQ;
+	if (val & 4)
+		reg[0x12] |= (uint8_t)RegSound8::IRQ;
+	else
+		reg[0x12] &= ~(uint8_t)RegSound8::IRQ;
 
-    if (val & 8)
-        reg[0x14] |= (uint8_t)RegSound8::IRQ;
-    else
-        reg[0x14] &= ~(uint8_t)RegSound8::IRQ;
+	if (val & 8)
+		reg[0x14] |= (uint8_t)RegSound8::IRQ;
+	else
+		reg[0x14] &= ~(uint8_t)RegSound8::IRQ;
 
-    if (val & 16)
-        reg[0x16] |= (uint8_t)RegSound16::IRQ;
-    else
-        reg[0x16] &= ~(uint8_t)RegSound16::IRQ;
+	if (val & 16)
+		reg[0x16] |= (uint8_t)RegSound16::IRQ;
+	else
+		reg[0x16] &= ~(uint8_t)RegSound16::IRQ;
 
-    if (val & 32)
-        reg[0x19] |= (uint8_t)RegSound16::IRQ;
-    else
-        reg[0x19] &= ~(uint8_t)RegSound16::IRQ;
+	if (val & 32)
+		reg[0x19] |= (uint8_t)RegSound16::IRQ;
+	else
+		reg[0x19] &= ~(uint8_t)RegSound16::IRQ;
 
 }
 
@@ -1444,7 +1443,8 @@ void Mn1271::SoundDataCopy(int ch, UINT n)
 			*(localBuf[ch] + a + 1) = (uint8_t)(d >> 8);
 			localBufPointer[ch] += 2;
 		}
-		_ASSERT(localBufPointer[ch] <= blockSize);
+		if (localBufPointer[ch] >= blockSize)
+			localBufPointer[ch] = 0;
 
 		memcpy_s(lpBlockAdd1, blockSize1, localBuf[ch], blockSize1);
 
@@ -1470,22 +1470,22 @@ void Mn1271::SoundDataCopy(int ch, UINT n)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 int16_t Mn1271::GetWave(int ch)
 {
-    int16_t val;
+	int16_t val;
 
-    double t = 1 / (double)frequency[ch];
+	double t = 1 / (double)frequency[ch];
 
-    if (bPlaying[ch]) {
-        val = (int16_t)SquareWave(frequency[ch], wavePointer[ch] * step) * 7000; // 適当に±7000にしておく
-        ++wavePointer[ch];
-    }
-    else {
-        val = 0;
-    }
+	if (bPlaying[ch]) {
+		val = (int16_t)SquareWave(frequency[ch], wavePointer[ch] * step) * 7000; // 適当に±7000にしておく
+		++wavePointer[ch];
+	}
+	else {
+		val = 0;
+	}
 
-    if (wavePointer[ch] > (unsigned int)(t / step))
-        wavePointer[ch] = 0;
+	if (wavePointer[ch] > (unsigned int)(t / step))
+		wavePointer[ch] = 0;
 
-    return val;
+	return val;
 }
 
 
@@ -1496,17 +1496,17 @@ int16_t Mn1271::GetWave(int ch)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 double Mn1271::SquareWave(int f, double t)
 {
-    if (f == 0)
-        return 0;
+	if (f == 0)
+		return 0;
 
-    double tt = 1 / (double)f;
-    while (t > tt) t -= tt;
+	double tt = 1 / (double)f;
+	while (t > tt) t -= tt;
 
-    double span = tt / 2;
-    if (t < span)
-        return 1.0;
-    else
-        return -1.0;
+	double span = tt / 2;
+	if (t < span)
+		return 1.0;
+	else
+		return -1.0;
 }
 
 
@@ -1517,9 +1517,9 @@ double Mn1271::SquareWave(int f, double t)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::PlaySound(int ch)
 {
-    WriteLocalBuffer(ch);
+	WriteLocalBuffer(ch);
 
-    bPlaying[ch] = true;
+	bPlaying[ch] = true;
 }
 
 
@@ -1530,9 +1530,9 @@ void Mn1271::PlaySound(int ch)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::StopSound(int ch)
 {
-    WriteLocalBuffer(ch);
+	WriteLocalBuffer(ch);
 
-    bPlaying[ch] = false;
+	bPlaying[ch] = false;
 }
 
 
@@ -1543,14 +1543,14 @@ void Mn1271::StopSound(int ch)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::SetFrequency(int ch, int f)
 {
-    WriteLocalBuffer(ch);
+	WriteLocalBuffer(ch);
 
-    if (f >= 1 && f <= 15000) {
-        frequency[ch] = f;
-    }
-    else {
-        bPlaying[ch] = false;
-    }
+	if (f >= 1 && f <= 15000) {
+		frequency[ch] = f;
+	}
+	else {
+		bPlaying[ch] = false;
+	}
 }
 
 #ifndef _ANDROID
@@ -1562,7 +1562,7 @@ void Mn1271::SetFrequency(int ch, int f)
 void Mn1271::WriteLocalBuffer(int ch)
 {
 
-    DWORD d = WaitForSingleObject(bufWriteEvent[ch], INFINITE);
+	DWORD d = WaitForSingleObject(bufWriteEvent[ch], INFINITE);
 
 	if (d == WAIT_OBJECT_0) {
 		BOOL err;
@@ -1579,7 +1579,8 @@ void Mn1271::WriteLocalBuffer(int ch)
 				*(localBuf[ch] + localBufPointer[ch]++) = (uint8_t)d;
 				*(localBuf[ch] + localBufPointer[ch]++) = (uint8_t)(d >> 8);
 			}
-			_ASSERT(localBufPointer[ch] <= blockSize);
+			if (localBufPointer[ch] >= blockSize)
+				localBufPointer[ch] = 0;
 		}
 
 		err = SetEvent(bufWriteEvent[ch]);
@@ -1610,21 +1611,21 @@ void Mn1271::CheckStatus()
 
 bool Mn1271::GetRemoteStatus()
 {
-    return bRemoteOn;
+	return bRemoteOn;
 }
 
 bool Mn1271::GetReadStatus()
 {
-    bool bTmp = bRead;
-    bRead = false;
-    return bTmp;
+	bool bTmp = bRead;
+	bRead = false;
+	return bTmp;
 }
 
 bool Mn1271::GetWriteStatus()
 {
-    bool bTmp = bWrite;
-    bWrite = false;
-    return bTmp;
+	bool bTmp = bWrite;
+	bWrite = false;
+	return bTmp;
 }
 
 
@@ -1632,38 +1633,4 @@ bool Mn1271::GetWriteStatus()
 #ifdef _ANDROID
 #include "Mn1271forAndroid.hxx"
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

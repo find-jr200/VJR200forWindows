@@ -95,7 +95,7 @@ INT_PTR CALLBACK Tab1Proc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			GetDlgItemText(hDlg, IDC_OPTION_REFRATE, buff, 5);
 			int r = _tcstol(buff, &e, 10);
 			if (r == 0 && *e != '\0') {
-				MessageBox(hDlg, g_strTable[(int)Msg::Refresh_rate_incorrect], NULL, 0);
+				MessageBox(hDlg, g_strTable[(int)Msg::Refresh_rate_incorrect], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 				break;
 			}
 			else {
