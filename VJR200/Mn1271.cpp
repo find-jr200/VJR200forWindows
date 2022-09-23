@@ -254,40 +254,34 @@ void Mn1271::TickTimerCounter(int cycles)
     }
 
     // TCC　サウンド
-    if ((reg[0x12] & (uint8_t)(RegSound8::DATA)) != 0) {
-        ps = reg[0x12] & (uint8_t)(RegSound8::PRESCALE);
-        ps = GetPrescale(ps >> 3);
-        ps *= 2;
-        double t = (double)ps / CLOCK;
-        int regVal = reg[0x13];
-        regVal -= (int)(tickTime / t);
-        if (regVal < 0) {
-            reg[0x13] = (uint8_t)(tccSetVal + regVal);
-            if (g_debug == -1 || debugTccEnable) AssertIrq((int)(IrqType::TCC));
-            reg[0x12] |= 0x20;
-        }
-        else {
-            reg[0x13] = (uint8_t)regVal;
-        }
-    }
+	ps = reg[0x12] & (uint8_t)(RegSound8::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	int tccCycle = tccSetVal * ps;
+
+	if (tccCycle != 0 && tccCountEnable != 0) {
+		tccCycleCount += cycles;
+		if (tccCycleCount >= tccCycle && (g_debug == -1 || debugTccEnable)) {
+			AssertIrq((int)(IrqType::TCC));
+			tccCycleCount -= tccCycle;
+			reg[0x12] |= 0x20;
+		}
+		reg[0x13] = tccSetVal - (tccCycleCount / ps);
+	}
 
     // TCD　サウンド
-    if ((reg[0x14] & (uint8_t)(RegSound8::DATA)) != 0) {
-        ps = reg[0x14] & (uint8_t)(RegSound8::PRESCALE);
-        ps = GetPrescale(ps >> 3);
-        ps *= 2;
-        double t = (double)ps / CLOCK;
-        int regVal = reg[0x15];
-        regVal -= (int)(tickTime / t);
-        if (regVal < 0) {
-            reg[0x15] = (uint8_t)(tcdSetVal + regVal);
-            if (g_debug == -1 || debugTcdEnable) AssertIrq((int)(IrqType::TCD));
-            reg[0x14] |= 0x20;
-        }
-        else {
-            reg[0x15] = (uint8_t)regVal;
-        }
-    }
+	ps = reg[0x14] & (uint8_t)(RegSound8::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	int tcdCycle = tcdSetVal * ps;
+
+	if (tcdCycle != 0 && tcdCountEnable != 0) {
+		tcdCycleCount += cycles;
+		if (tcdCycleCount >= tcdCycle && (g_debug == -1 || debugTcdEnable)) {
+			AssertIrq((int)(IrqType::TCD));
+			tcdCycleCount -= tcdCycle;
+			reg[0x14] |= 0x20;
+		}
+		reg[0x15] = tcdSetVal - (tcdCycleCount / ps);
+	}
 
     // TCE　リアルタイム
     ps = reg[0x16] & (uint8_t)(RegSound16::PRESCALE);
@@ -307,26 +301,21 @@ void Mn1271::TickTimerCounter(int cycles)
     }
 
     // TCF　サウンド
-    if ((reg[0x19] & (uint8_t)(RegSound16::DATA)) != 0) {
-        ps = reg[0x19] & (uint8_t)(RegSound16::PRESCALE);
-        ps = GetPrescale(ps >> 3);
-        double t = (double)ps / CLOCK;
+	ps = reg[0x19] & (uint8_t)(RegSound16::PRESCALE);
+	ps = GetPrescale(ps >> 3);
+	int tcfCycle = ((tcfHSetVal << 8) + tcfLSetVal) * ps;
 
-        int regVal = (reg[0x1a] << 8) + reg[0x1b];
-        regVal -= (int)(tickTime / t);
-        if (regVal < 0) {
-            int setVal = (tceHSetVal << 8) + tceLSetVal;
-            setVal += regVal;
-            reg[0x1a] = setVal >> 8;
-            reg[0x1b] = setVal & 0xff;
-            if (g_debug == -1 || debugTcfEnable) AssertIrq((int)(IrqType::TCF));
-            reg[0x19] |= 0x20;
-        }
-        else {
-            reg[0x1a] = regVal >> 8;
-            reg[0x1b] = regVal & 0xff;
-        }
-    }
+	if (tcfCycle != 0 && tcfCountEnable == 1) {
+		tcfCycleCount += cycles;
+		if (tcfCycleCount >= tcfCycle && (g_debug == -1 || debugTcfEnable)) {
+			AssertIrq((int)(IrqType::TCF));
+			tcfCycleCount -= tcfCycle;
+			reg[0x19] |= 0x20;
+		}
+		int c = ((tcfHSetVal << 8) + tcfLSetVal) - (tcfCycleCount / ps);
+		reg[0x1a] = c >> 8;
+		reg[0x1b] = c & 0xff;
+	}
 }
 
 
@@ -800,6 +789,7 @@ void Mn1271::Write(uint8_t r, uint8_t val)
             reg[0x1d] &= 0xfb;
             SetIrqFlag();
 
+			tccCycleCount = 0;
             Reg12_write(val);
             SetIrqMask2(2, (val & 64) ? 1 : 0);
             break;
@@ -808,6 +798,7 @@ void Mn1271::Write(uint8_t r, uint8_t val)
             tccSetVal = val;
             if (val == 0)
                 tccSetVal = 0x100;
+			tccCycleCount = 0;
             SetSoundData(0);
             break;
         case 0x14:
@@ -815,6 +806,7 @@ void Mn1271::Write(uint8_t r, uint8_t val)
             reg[0x1d] &= 0xf7;
             SetIrqFlag();
 
+			tcdCycleCount = 0;
             Reg14_write(val);
             SetIrqMask2(3, (val & 64) ? 1 : 0);
             break;
@@ -823,6 +815,7 @@ void Mn1271::Write(uint8_t r, uint8_t val)
             tcdSetVal = val;
             if (val == 0)
                 tcdSetVal = 0x100;
+			tcdCycleCount = 0;
             SetSoundData(1);
             break;
         case 0x16:
@@ -853,6 +846,7 @@ void Mn1271::Write(uint8_t r, uint8_t val)
             reg[0x1d] &= 0xdf;
             SetIrqFlag();
 
+			tcfCycleCount = 0;
             Reg19_write(val);
             SetIrqMask2(5, (val & 64) ? 1 : 0);
             break;
@@ -868,6 +862,7 @@ void Mn1271::Write(uint8_t r, uint8_t val)
 
             if (tcfHSetVal == 0 && tcfLSetVal == 0)
                 tcfHSetVal = 0x100;
+			tcfCycleCount = 0;
             SetSoundData(2);
             break;
         case 0x1c:
@@ -1180,6 +1175,7 @@ void Mn1271::SetSoundData(int ch)
 void Mn1271::Reg12_write(uint8_t val)
 {
     int data = val & (uint8_t)(RegSound8::DATA);
+	tccCountEnable = data ? 1 : 0;
     int ps = val & (uint8_t)(RegSound8::PRESCALE);
     ps = GetPrescale(ps >> 3);
     ps *= 2; // サウンド機能のみ1/2の周波数
@@ -1211,10 +1207,9 @@ void Mn1271::Reg12_write(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg14_write(uint8_t val)
 {
-    //val14 = val;
-
     int data = val & (uint8_t)(RegSound8::DATA);
-    int ps = val & (uint8_t)(RegSound8::PRESCALE);
+	tcdCountEnable = data ? 1 : 0;
+	int ps = val & (uint8_t)(RegSound8::PRESCALE);
     ps = GetPrescale(ps >> 3);
     ps *= 2; // サウンド機能のみ1/2の周波数
 
@@ -1263,6 +1258,13 @@ void Mn1271::Reg16_write(uint8_t val)
 void Mn1271::Reg19_write(uint8_t val)
 {
     int data = val & (uint8_t)(RegSound16::DATA);
+	if (data == 0) {
+		tcfCountEnable = 0;
+	}
+	else {
+		tcfCountEnable = 1;
+	}
+
     int ps = val & (uint8_t)(RegSound16::PRESCALE);
     ps = GetPrescale(ps >> 3);
     ps *= 2; // サウンド機能のみ1/2の周波数

@@ -145,8 +145,8 @@ protected:
 	unsigned int tcfHSetVal = 0;
 	unsigned int tcfLSetVal = 0;
 
-	int tcaCountEnable, tcbCountEnable, tceCountEnable;
-	int tcaCycleCount, tcbCycleCount, tceCycleCount;
+	int tcaCountEnable, tcbCountEnable, tccCountEnable, tcdCountEnable, tceCountEnable, tcfCountEnable;
+	int tcaCycleCount, tcbCycleCount, tccCycleCount, tcdCycleCount, tceCycleCount, tcfCycleCount;
 	int dsBufferSize;
 	bool bPlaying[3] = {};
 	int frequency[3] = {};
@@ -179,7 +179,7 @@ inline void Mn1271::save(Archive & ar, std::uint32_t const version) const
 		ar(frequency[i]);
 	}
 	ar(step);
-	ar(bWrite, bWrite, bRemoteOn, bEnterIrq, preCpuScale);
+	ar(bWrite, bRead, bRemoteOn, bEnterIrq, preCpuScale);
 }
 
 template<class Archive>

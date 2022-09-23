@@ -109,7 +109,7 @@ bool Address::Init()
     for (int i = 0xc000; i < 0xc800; ++i) {
         attribute[i] = DevType::Ram;
     }
-    for (int i = 0xc800; i < 0xc9ff; ++i) {
+    for (int i = 0xc800; i < 0xca00; ++i) {
         attribute[i] = DevType::Mn1271;
     }
     for (int i = 0xca00; i < 0xcc00; ++i) {
