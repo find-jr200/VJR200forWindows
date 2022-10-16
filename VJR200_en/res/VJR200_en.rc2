@@ -1,23 +1,23 @@
 //
 // Dialog
 //
-
-IDD_ABOUTBOX DIALOGEX 0, 0, 157, 204
+IDD_ABOUTBOX DIALOGEX 0, 0, 186, 218
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Version Information VJR200"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,100,183,50,14
+    DEFPUSHBUTTON   "OK",IDOK,129,197,50,14
 #ifdef _WIN64
-    LTEXT           "VJR200, Version 1.5.3 (64bit)",IDC_STATIC,32,12,96,8
+    LTEXT           "VJR200, Version 1.6.1 (64bit)",IDC_STATIC,47,12,91,8
 #else
-    LTEXT           "VJR200, Version 1.5.3 (32bit)",IDC_STATIC,32,12,96,8
+    LTEXT           "VJR200, Version 1.6.1 (32bit)",IDC_STATIC,47,12,91,8
 #endif
-    LTEXT           "Copyright 2017,2022  FIND",IDC_STATIC,30,28,79,8
-    LTEXT           "The following software was used for VJR-200 based on each license.",IDC_STATIC,7,43,143,22
-    LTEXT           "BSD 3 Clause License",IDC_STATIC,7,68,100,8
-    LTEXT           "MAME (http://www.mame.net/) copyright-holders:Nicola Salmoria, Aaron Giles",IDC_STATIC,7,80,143,21
-    LTEXT           "cereal (https://uscilab.github.io/cereal/) copyright-holders:Randolph Voorhies, Shane Grant",IDC_STATIC,7,104,143,28
-    LTEXT           "ZLib License",IDC_STATIC,7,136,39,8
-    LTEXT           "TinyXML-2\r\n(https://github.com/leethomason/tinyxml2)\r\ncopyright-holder: Lee Thomason",IDC_STATIC,7,145,143,32
+    LTEXT           "Copyright 2017,2022  FIND",IDC_STATIC,53,28,79,8
+    LTEXT           "The following software was used for VJR-200.",IDC_STATIC,7,43,172,16
+    LTEXT           "X88000 (https://quagma.sakura.ne.jp/manuke/x88000.html)\r\nManuke Station",IDC_STATIC,7,62,172,16
+    LTEXT           "MAME (http://www.mame.net/) copyright-holders:Nicola Salmoria, Aaron Giles",IDC_STATIC,7,101,172,21
+    LTEXT           "cereal (https://uscilab.github.io/cereal/) copyright-holders:Randolph Voorhies, Shane Grant",IDC_STATIC,7,125,172,28
+    LTEXT           "BSD 3 Clause License",IDC_STATIC,7,89,119,8
+    LTEXT           "ZLib License",IDC_STATIC,7,152,39,8
+    LTEXT           "TinyXML-2\r\n(https://github.com/leethomason/tinyxml2)\r\ncopyright-holder: Lee Thomason",IDC_STATIC,7,162,172,29
 END

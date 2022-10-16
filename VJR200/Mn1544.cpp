@@ -524,7 +524,7 @@ uint8_t Mn1544::KeyScan()
 	int w = 0;
 	bool bHit = false;
 
-	if (!GetKeyboardState(code)) MessageBox(g_hMainWnd, g_strTable[(int)Msg::Keyboard_acquisition_error], NULL, 0);
+	if (!GetKeyboardState(code)) MessageBox(g_hMainWnd, g_strTable[(int)Msg::Keyboard_acquisition_error], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 
 	for (w = 8; w <= 13; ++w) {
 		if (code[w] & 0x80) {

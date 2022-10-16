@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <cereal/cereal.hpp>
 
-enum class DevType { None, Rom, Ram, Mn1271, Crtc };
+enum class DevType { None, Rom, Ram, Mn1271, Crtc , Fdd};
 
 class Address
 {
@@ -33,6 +33,8 @@ protected:
 	static const int MEM_SIZE = 65536;
 	DevType* attribute = nullptr;
 	uint8_t* memory = nullptr;
+	void SetRamPattern(uint16_t sAddress, uint16_t eAddress);
+
 };
 
 template<class Archive>

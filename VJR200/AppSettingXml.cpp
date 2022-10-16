@@ -144,6 +144,7 @@ bool AppSettingXml::Read()
 	if (path != nullptr) {
 		SetStrValue(path, "RomFile", g_pRomFile);
 		SetStrValue(path, "FontFile", g_pFontFile);
+		SetStrValue(path, "FddRomFile", g_pFdRomFile);
 
 		for (unsigned int i = 0; i < RECENT_FILES_NUM; ++i) {
 			sprintf(elemName, "%s%d", "RFilesforCJRSet", i);
@@ -212,6 +213,7 @@ bool AppSettingXml::Read()
 		SetNumValue<int>(optioins, "Language", g_language);
 		SetNumValue<int>(optioins, "Keyboard", g_keyboard);
 		SetBoolValue(optioins, "RomajiKana", g_bRomajiKana);
+		SetBoolValue(optioins, "DetachFdd", g_bDetachFdd);
 	}
 
 
@@ -316,6 +318,10 @@ void AppSettingXml::Write()
 	elem->SetText(converter.to_bytes(g_pFontFile).c_str());
 	path->InsertEndChild(elem);
 
+	elem = xml.NewElement("FddRomFile");
+	elem->SetText(converter.to_bytes(g_pFdRomFile).c_str());
+	path->InsertEndChild(elem);
+
 	char elemName[MAX_PATH];
 	elemName[0] = '\0';
 	if (g_rFilesforCJRSet.size() >= RECENT_FILES_NUM + 1)
@@ -412,6 +418,11 @@ void AppSettingXml::Write()
 	elem->SetText(buff);
 	options->InsertEndChild(elem);
 
+
+	sprintf(buff, "%d", g_bDetachFdd ? 1 : 0);
+	elem = xml.NewElement("DetachFdd");
+	elem->SetText(buff);
+	options->InsertEndChild(elem);
 	// Sound ///////////////////////////////////////////////////////////////////////
 	tinyxml2::XMLElement* sound = root->GetDocument()->NewElement("Sound");
 	root->InsertEndChild(sound);

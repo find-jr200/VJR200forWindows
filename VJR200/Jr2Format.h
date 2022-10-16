@@ -80,7 +80,7 @@ protected:
 
 					if (outer->fp == nullptr) {
 #ifndef _ANDROID
-						MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+						MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 #endif
 						return;
 					}

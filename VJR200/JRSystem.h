@@ -7,6 +7,7 @@
 #include "Mn1271.h"
 #include "Mn1544.h"
 #include "m6800.h"
+#include "FddSystem.h"
 #ifndef _ANDROID
 #include "Printer.h"
 #include "ImagePrinter.h"
@@ -30,6 +31,7 @@ public:
 	Mn1271* pMn1271 = nullptr;
 	Mn1544* pMn1544 = nullptr;
 	m6800_cpu_device* pCpu = nullptr;
+	FddSystem* pFddSystem = nullptr;
 #ifndef _ANDROID
 	Printer* pPrinter;
 #endif

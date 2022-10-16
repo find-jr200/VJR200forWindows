@@ -9,6 +9,7 @@
 #include <atlbase.h>
 #include <d2d1.h>
 #include <dwrite.h>
+#include <wincodec.h>
 #include <VersionHelpers.h>
 #include <Commdlg.h>
 #include <commctrl.h>
@@ -23,6 +24,7 @@
 #include "AppSettingXml.h"
 #include "OptionDialog.h"
 #include "Jr2Format.h"
+#include "DiskImageDlg.h"
 
 #include <sstream>
 #include <codecvt>
@@ -31,6 +33,7 @@
 #pragma comment (lib, "gdiplus.lib") 
 #pragma comment(lib,"d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
+#pragma comment(lib, "windowscodecs.lib")
 
 // 定数
 #define MAX_LOADSTRING 100
@@ -38,14 +41,15 @@ const int CLOCK = 1339285;
 const int BITMAP_W = 320;
 const int BITMAP_H = 224;
 const float REAL_WRATIO = 0.85f;
-const int STR_RESOURCE_NUM = 40;
+const int STR_RESOURCE_NUM = 44;
 const unsigned int RECENT_FILES_NUM = 10;
 const int CJR_FILE_MAX = 65536;
+const int D88_FILE_MAX = 2000000;
 const int CPU_SPEED_MAX = 1000;
 const int BREAKPOINT_NUM = 12;
 const int RW_BREAKPOINT_NUM = 5;
 const TCHAR* APPDATA_PATH = _T("\\FIND_JR\\VJR200\\");
-const int CEREAL_VER = 1;
+const int CEREAL_VER = 2;
 extern const int JUMP_HISTORY_SIZE;
 const int JUMP_HISTORY_SIZE = 24;
 
@@ -68,6 +72,7 @@ HWND g_hMemWnd;
 HMODULE g_hMod; // リソースDLLのモジュールハンドル
 ID2D1Factory* g_pD2dFactory = nullptr;
 IDWriteFactory* g_pDWriteFactory = nullptr;
+IWICImagingFactory *pWICImagingFactory = nullptr;
 MemWindow* g_pMemWindow = nullptr;
 DisasmWindow* g_pDisasmWindow = nullptr;
 HANDLE g_hEvent[3][6];
@@ -92,6 +97,7 @@ uint16_t g_prePC = 0;
 TCHAR g_JumpHistory[JUMP_HISTORY_SIZE][12] = { 0 };
 int g_JumpHistory_index = 0;
 TCHAR g_RWBreak[10] = { 0 };
+bool g_bFddEnabled = false;
 
 JRSystem sys;
 
@@ -124,6 +130,7 @@ deque<wstring> g_rFilesforQLoad;
 deque<wstring> g_macroStrings;
 TCHAR g_pRomFile[MAX_PATH];
 TCHAR g_pFontFile[MAX_PATH];
+TCHAR g_pFdRomFile[MAX_PATH];
 bool g_b2buttons = false;
 int g_Joypad1pA = 0, g_Joypad1pB = 0, g_Joypad2pA = 0, g_Joypad2pB = 0;
 int g_forcedJoypadA = 0x20, g_forcedJoypadB = 0x20;
@@ -132,6 +139,7 @@ int g_bCmtAddBlank = 1;
 bool g_bRomajiKana = false;
 bool g_bPrinterLed = true;
 bool g_bStatusBar = true;
+bool g_bDetachFdd = false;
 
 static const int STATESAVE_SUBMENU_POS = 15;
 static const int STATELOAD_SUBMENU_POS = 16;
@@ -201,12 +209,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	//if (!settingXml.Init()) {
-	//	if (!setting.Init()) {
-	//		MessageBox(NULL, _T("Failed to create application settings\r\nSettings will not be saved"), NULL, 0);
-	//	}
-	//}
-
 	if (settingXml.Init()) {
 		settingXml.Read();
 	} 
@@ -234,7 +236,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	}
 
 	if (g_hMod == NULL) {
-		MessageBox(NULL, _T("Failed to load resource DLL"), NULL, MB_OK);
+		MessageBox(NULL, _T("Failed to load resource DLL"), g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 		return 0;
 	}
 
@@ -242,7 +244,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		LoadString(g_hMod, i + 2000, g_strTable[i], 256);
 
 	if (!IsWindowsVistaSP2OrGreater()) {
-		MessageBox(NULL, g_strTable[(int)Msg::It_will_not_work_on_this_version_of_Windows], NULL, 0);
+		MessageBox(NULL, g_strTable[(int)Msg::It_will_not_work_on_this_version_of_Windows], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 		return 0;
 	}
 
@@ -274,6 +276,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			reinterpret_cast<IUnknown **>(&g_pDWriteFactory)
 		);
 	}
+	if (SUCCEEDED(hr))
+	{
+		hr = CoCreateInstance(CLSID_WICImagingFactory,	NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pWICImagingFactory));
+	}
 	if (FAILED(hr))
 		return false;
 
@@ -291,9 +297,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	if (i = sys.Init()) {
 		TCHAR c[30];
 		wsprintf(c, g_strTable[(int)Msg::Initialization_failed], i);
-		MessageBox(g_hMainWnd, c, NULL, 0);
+		MessageBox(g_hMainWnd, c, g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 		return FALSE;
 	}
+
+
+
+	// FDD初期化
+	if (sys.pFddSystem == nullptr) {
+		sys.pFddSystem = new FddSystem();
+	}
+
 
 	if (g_deviceRunning) {
 		ValidateRect(g_hMainWnd, NULL);
@@ -404,9 +418,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					// 描画処理の実行
 					++fps;
 					sys.pPrinter->CountUp(); // プリンタ・データ受信アイコンを変化させるためのタイマー処理
+					sys.pFddSystem->CountUp(); // FDDアイコンを変化させるためのタイマー処理
 
 					if (FAILED(sys.pCrtc->OnRender())) {
-						MessageBox(g_hMainWnd, g_strTable[(int)Msg::Creation_of_D2D_device_failed], nullptr, 0);
+						MessageBox(g_hMainWnd, g_strTable[(int)Msg::Creation_of_D2D_device_failed], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 						sys.pCrtc->DiscardDeviceResources();
 						sys.Dispose();
 						return FALSE;
@@ -427,7 +442,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	}
 
 	// プログラム終了
+
+	if (sys.pFddSystem != nullptr) {
+		delete sys.pFddSystem;
+		sys.pFddSystem = nullptr;
+	}
+
 	sys.pMn1271->SoundOff();
+	SafeRelease(&pWICImagingFactory);
 	SafeRelease(&g_pDWriteFactory);
 	SafeRelease(&g_pD2dFactory);
 	Gdiplus::GdiplusShutdown(gdiplusToken);
@@ -435,9 +457,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	if (g_pTapeFormat != nullptr)
 		delete g_pTapeFormat;
 	timeEndPeriod(1);
-	//setting.Write();
 	settingXml.Write();
 	DeleteTimerQueueEx(hTimerQueue, NULL);
+	sys.Dispose();
 	CoUninitialize();
 	FreeLibrary(g_hMod);
 	return (int)msg.wParam;
@@ -548,7 +570,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				else {
 					MessageBeep(MB_ICONEXCLAMATION);
-					MessageBox(NULL, g_strTable[(int)Msg::Invalid_file_format], NULL, 0);
+					MessageBox(NULL, g_strTable[(int)Msg::Invalid_file_format], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 				}
 			}
 		}
@@ -564,15 +586,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				else {
 					MessageBeep(MB_ICONEXCLAMATION);
-					MessageBox(NULL, g_strTable[(int)Msg::Invalid_file_format], NULL, 0);
+					MessageBox(NULL, g_strTable[(int)Msg::Invalid_file_format], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 				}
 			}
-			break;
-		}
-		case IDM_FILE_CJRSAVE:
-		{
-			DialogBox(g_hMod, MAKEINTRESOURCE(IDD_SAVECJR), hWnd, (DLGPROC)DlgSaveCjrProc);
-
 			break;
 		}
 		case  IDM_FILE_JR2EJECT:
@@ -610,7 +626,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				if (!g_pTapeFormat->Init(tmpFileName)) {
 					delete g_pTapeFormat;
 					g_pTapeFormat = nullptr;
-					MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+					MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 				} else {
 					 AddRecentFiles(tmpFileName, 0);
 				}
@@ -657,13 +673,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			OpenFileDialog(_T("Label file(*.*)\0*.*\0"), fileName, g_hMainWnd);
 			if (_tcslen(fileName) != 0) {
 				if (!SetDebugLabel(fileName))
-					MessageBox(NULL, g_strTable[(int)Msg::This_file_cant_be_processed], NULL, 0);
+					MessageBox(NULL, g_strTable[(int)Msg::This_file_cant_be_processed], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 			}
 			break;
 		}
 		case IDM_FILE_RESET:
 		{
-			if (MessageBox(g_hMainWnd, g_strTable[(int)Msg::Do_you_want_to_reset_it], g_strTable[(int)Msg::Confirmation], MB_YESNO | MB_ICONWARNING) == IDYES) {
+			if (MessageBox(g_hMainWnd, g_strTable[(int)Msg::Do_you_want_to_reset_it], g_strTable[(int)Msg::Confirmation], MB_YESNO | MB_ICONQUESTION) == IDYES) {
 				if (hTimerQueue != NULL)
 					DeleteTimerQueueTimer(hTimerQueue, hQuickTypeTimer, NULL);
 				sys.pMn1271->SoundOff();
@@ -677,7 +693,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		case IDM_FILE_SAVEMEMIMAGE:
 			if (!sys.pAddress->SaveDumpFile())
-				MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+				MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 			break;
 
 		case IDM_FILE_STATESAVE0:
@@ -733,12 +749,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				else {
 					MessageBeep(MB_ICONEXCLAMATION);
-					MessageBox(NULL, g_strTable[(int)Msg::Invalid_file_format], NULL, 0);
+					MessageBox(NULL, g_strTable[(int)Msg::Invalid_file_format], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 					break;
 				}
 			}
 			else {
-				if (MessageBox(hWnd, g_strTable[(int)Msg::The_specified_file_can_not_be_opened], NULL, MB_YESNO) == IDYES) {
+				if (MessageBox(hWnd, g_strTable[(int)Msg::The_specified_file_can_not_be_opened], g_strTable[(int)Msg::Confirmation], MB_YESNO | MB_ICONQUESTION) == IDYES) {
 					g_rFilesforCJRSet.erase(g_rFilesforCJRSet.begin() + idx);
 					g_rFilesforCJRSet.push_back(_T(""));
 				}
@@ -762,7 +778,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (g_rFilesforQLoad[idx].size() == 0) break;
 
 			if (!sys.pAddress->CjrQuickLoad(g_rFilesforQLoad[idx].data())) {
-				if (MessageBox(hWnd, g_strTable[(int)Msg::The_specified_file_can_not_be_opened], NULL, MB_YESNO) == IDYES) {
+				if (MessageBox(hWnd, g_strTable[(int)Msg::The_specified_file_can_not_be_opened], g_strTable[(int)Msg::Confirmation], MB_YESNO | MB_ICONQUESTION) == IDYES) {
 					g_rFilesforQLoad.erase(g_rFilesforQLoad.begin() + idx);
 					g_rFilesforQLoad.push_back(_T(""));
 				}
@@ -771,6 +787,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				AddRecentFiles(g_rFilesforQLoad[idx].data(), 1);
 			}
 			SetMenuItemForRecentFiles();
+			break;
+		}
+		case IDM_FDD_MOUNT_DISKIMAGE:
+		{
+			DiskImageDlg dlgDiskImage(g_hMainWnd);
+			dlgDiskImage.DoModal();
+
+			break;
+		}
+		case IDM_FDD_DETACHFDD:
+		{
+			if (g_bDetachFdd) {
+				g_bDetachFdd = false;
+				CheckMenuItem(hMenu, IDM_FDD_DETACHFDD, MF_UNCHECKED);
+			}
+			else {
+				g_bDetachFdd = true;
+				CheckMenuItem(hMenu, IDM_FDD_DETACHFDD, MF_CHECKED);
+			}
 			break;
 		}
 		case IDM_VIEW_X1:
@@ -1029,7 +1064,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				else {
 					MessageBeep(MB_ICONEXCLAMATION);
-					MessageBox(NULL, g_strTable[(int)Msg::Invalid_file_format], NULL, 0);
+					MessageBox(NULL, g_strTable[(int)Msg::Invalid_file_format], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 					break;
 				}
 			}
@@ -1269,6 +1304,21 @@ string WStringToString(wstring wstr)
 	return str;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// string → wstring変換
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+std::wstring StringToWString(std::string str)
+{
+	int buffSize = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, (wchar_t*)NULL, 0);
+	wchar_t* wc = new wchar_t[buffSize];
+	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, wc, buffSize);
+	std::wstring oRet(wc, wc + buffSize - 1);
+	delete[] wc;
+	return oRet;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2188,6 +2238,7 @@ INT_PTR CALLBACK DlgRomFontProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 	case WM_INITDIALOG:
 		SetDlgItemText(hDlg, IDC_ROMFILE, g_pRomFile);
 		SetDlgItemText(hDlg, IDC_FONTFILE, g_pFontFile);
+		SetDlgItemText(hDlg, IDC_FDDROMFILE, g_pFdRomFile);
 		return (INT_PTR)TRUE;
 		break;
 	case WM_COMMAND:
@@ -2202,7 +2253,7 @@ INT_PTR CALLBACK DlgRomFontProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 			len = (int)_tcslen(buff);
 
 			if (len == 0) {
-				MessageBox(hDlg, g_strTable[(int)Msg::Please_specify_the_file], g_strTable[(int)Msg::Caution], 0);
+				MessageBox(hDlg, g_strTable[(int)Msg::Please_specify_the_file], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 				return (INT_PTR)TRUE;
 			}
 
@@ -2217,13 +2268,13 @@ INT_PTR CALLBACK DlgRomFontProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 			);
 			if (hFile == INVALID_HANDLE_VALUE) {
 				CloseHandle(hFile);
-				MessageBox(hDlg, g_strTable[(int)Msg::The_specified_ROM_file_can_not_be_opened], g_strTable[(int)Msg::Caution], 0);
+				MessageBox(hDlg, g_strTable[(int)Msg::The_specified_ROM_file_can_not_be_opened], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 				return (INT_PTR)TRUE;
 			}
 
 			if (GetFileSize(hFile, NULL) != 16384) {
 				CloseHandle(hFile);
-				MessageBox(hDlg, g_strTable[(int)Msg::The_size_of_the_specified_ROM_file_is_incorrect], g_strTable[(int)Msg::Caution], 0);
+				MessageBox(hDlg, g_strTable[(int)Msg::The_size_of_the_specified_ROM_file_is_incorrect], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 				return (INT_PTR)TRUE;
 			}
 			CloseHandle(hFile);
@@ -2234,7 +2285,7 @@ INT_PTR CALLBACK DlgRomFontProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 			len = (int)_tcslen(buff);
 
 			if (len == 0) {
-				MessageBox(hDlg, g_strTable[(int)Msg::Please_specify_the_file], g_strTable[(int)Msg::Caution], 0);
+				MessageBox(hDlg, g_strTable[(int)Msg::Please_specify_the_file], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 				return (INT_PTR)TRUE;
 			}
 
@@ -2248,17 +2299,53 @@ INT_PTR CALLBACK DlgRomFontProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 			);
 			if (hFile == INVALID_HANDLE_VALUE) {
 				CloseHandle(hFile);
-				MessageBox(hDlg, g_strTable[(int)Msg::The_specified_FONT_file_can_not_be_opened], g_strTable[(int)Msg::Caution], 0);
+				MessageBox(hDlg, g_strTable[(int)Msg::The_specified_FONT_file_can_not_be_opened], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 				return (INT_PTR)TRUE;
 			}
 
 			if (GetFileSize(hFile, NULL) != 2048) {
 				CloseHandle(hFile);
-				MessageBox(hDlg, g_strTable[(int)Msg::The_size_of_the_specified_FONT_file_is_incorrect], g_strTable[(int)Msg::Caution], 0);
+				MessageBox(hDlg, g_strTable[(int)Msg::The_size_of_the_specified_FONT_file_is_incorrect], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 				return (INT_PTR)TRUE;
 			}
 			CloseHandle(hFile);
 			_tcscpy(g_pFontFile, buff);
+
+
+			// FDD拡張ROMファイル　このファイルは任意
+			GetDlgItemText(hDlg, IDC_FDDROMFILE, buff, MAX_PATH);
+			len = (int)_tcslen(buff);
+			g_bFddEnabled = false;
+
+			if (len != 0) {
+				hFile = CreateFile(buff,
+					GENERIC_READ,
+					0,
+					0,
+					OPEN_EXISTING,
+					0,
+					0
+				);
+				if (hFile == INVALID_HANDLE_VALUE) {
+					CloseHandle(hFile);
+					MessageBox(hDlg, g_strTable[(int)Msg::The_specified_ROM_file_can_not_be_opened], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
+					_tcscpy(g_pFdRomFile, _T(""));
+				}
+				else {
+					if (GetFileSize(hFile, NULL) != 2048) {
+						CloseHandle(hFile);
+						MessageBox(hDlg, g_strTable[(int)Msg::The_size_of_the_specified_ROM_file_is_incorrect], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
+						_tcscpy(g_pFdRomFile, _T(""));
+					}
+					else {
+						CloseHandle(hFile);
+						_tcscpy(g_pFdRomFile, buff);
+					}
+				}
+			}
+			else {
+				_tcscpy(g_pFdRomFile, _T(""));
+			}
 
 			settingXml.Write();
 			EndDialog(hDlg, LOWORD(wParam));
@@ -2282,6 +2369,14 @@ INT_PTR CALLBACK DlgRomFontProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
 			TCHAR filename[MAX_PATH] = {};
 			if (OpenFileDialog(_T("Font flie(*.*)\0*.*\0"), filename, hDlg))
 				SetDlgItemText(hDlg, IDC_FONTFILE, filename);
+			return (INT_PTR)TRUE;
+			break;
+		}
+		case IDC_ROMFONT_FDDROMFILEOPEN:
+		{
+			TCHAR filename[MAX_PATH] = {};
+			if (OpenFileDialog(_T("ROM flie(*.*)\0*.*\0"), filename, hDlg))
+				SetDlgItemText(hDlg, IDC_FDDROMFILE, filename);
 			return (INT_PTR)TRUE;
 			break;
 		}
@@ -2310,198 +2405,6 @@ BOOL OpenFileDialog(TCHAR* filter, TCHAR* fileName, HWND hwnd)
 	ofn.Flags = OFN_FILEMUSTEXIST;
 
 	return GetOpenFileName(&ofn);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// CJR保存・ダイアログのウィンドウ・プロシージャ
-//
-////////////////////////////////////////////////////////////////////////////////////////////////////
-INT_PTR CALLBACK DlgSaveCjrProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	UNREFERENCED_PARAMETER(lParam);
-	switch (message)
-	{
-	case WM_INITDIALOG:
-	{
-		SetFocus(GetDlgItem(hDlg, IDC_SAVECJR_JRNAME));
-		return (INT_PTR)TRUE;
-		break;
-	}
-	case WM_COMMAND:
-	{
-		switch (LOWORD(wParam))
-		{
-		case IDC_SAVECJR_SAVEBASIC:
-		{
-			char jrName[20];
-			GetDlgItemTextA(hDlg, IDC_SAVECJR_JRNAME, jrName, 20);
-			if (strlen(jrName) == 0) {
-				MessageBox(hDlg, g_strTable[(int)Msg::Please_specify_the_file_name_for_JR], g_strTable[(int)Msg::Caution], 0);
-				break;
-			}
-			if (strlen(jrName) > 16) {
-				MessageBox(hDlg, g_strTable[(int)Msg::The_file_name_for_JR_is_limited_to_16_characters], g_strTable[(int)Msg::Caution], 0);
-				break;
-			}
-			CjrFormat cjr;
-			uint8_t* saveData = cjr.MemToCjrBasic(jrName);
-			if (sys.pAddress->ReadByte(0x801) == 0) {
-				MessageBox(hDlg, g_strTable[(int)Msg::There_is_no_program], g_strTable[(int)Msg::Caution], 0);
-				break;
-			}
-			int size = cjr.GetCjrSize();
-
-			ImmAssociateContext(g_hMainWnd, hImc);
-
-			OPENFILENAME ofn = {0};
-			ofn.lStructSize = sizeof(OPENFILENAME);
-			ofn.hwndOwner = hDlg;
-			ofn.lpstrFilter = g_strTable[(int)Msg::CJR_File];
-			ofn.nMaxCustFilter = 256;
-			ofn.nFilterIndex = 0;
-			ofn.lpstrFile = tmpFileName;
-			ofn.nMaxFile = MAX_PATH;
-			ofn.Flags = OFN_FILEMUSTEXIST | OFN_OVERWRITEPROMPT;
-
-			if (GetSaveFileName(&ofn)) {
-				TCHAR chkStr[MAX_PATH];
-				_tcscpy(chkStr, tmpFileName);
-				_tcsupr(chkStr);
-				if (_tcsncmp(_tcsrev(chkStr), _T("RJC."), 4) != 0)
-					_tcscat(tmpFileName, _T(".cjr"));
-
-				HANDLE hFile;
-				DWORD dwNumberOfBytesWritten;
-				hFile = CreateFile(tmpFileName,
-					GENERIC_WRITE,
-					0,
-					0,
-					CREATE_ALWAYS,
-					0,
-					0
-				);
-				if (hFile == INVALID_HANDLE_VALUE) {
-					MessageBox(hDlg, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
-					CloseHandle(hFile);
-					break;
-				}
-
-				WriteFile(hFile,
-					saveData,
-					size,
-					&dwNumberOfBytesWritten,
-					NULL);
-
-				CloseHandle(hFile);
-			}
-			hImc = ImmAssociateContext(g_hMainWnd, 0);
-			break;
-		}
-		case IDC_SAVECJR_SAVEBINARY:
-		{
-			char jrName[20];
-			GetDlgItemTextA(hDlg, IDC_SAVECJR_JRNAME, jrName, 20);
-			if (strlen(jrName) == 0) {
-				MessageBox(hDlg, g_strTable[(int)Msg::Please_specify_the_file_name_for_JR], g_strTable[(int)Msg::Caution], 0);
-				break;
-			}
-			if (strlen(jrName) > 16) {
-				MessageBox(hDlg, g_strTable[(int)Msg::The_file_name_for_JR_is_limited_to_16_characters], g_strTable[(int)Msg::Caution], 0);
-				break;
-			}
-
-			char buff[20];
-			char* e;
-			unsigned int start, end;
-			GetDlgItemTextA(hDlg, IDC_SAVECJR_SADDRESS, buff, 20);
-			start = strtol(buff, &e, 16);
-			if (start == 0 && *e != '\0') {
-				MessageBox(hDlg, g_strTable[(int)Msg::Start_address_is_incorrect], NULL, 0);
-				break;
-			}
-			if (start > 65535) {
-				MessageBox(hDlg, g_strTable[(int)Msg::Address_range_is_from_0_to_FFFF], NULL, 0);
-				break;
-			}
-
-			GetDlgItemTextA(hDlg, IDC_SAVECJR_EADDRESS, buff, 20);
-			end = strtol(buff, &e, 16);
-			if (end == 0 && *e != '\0') {
-				MessageBox(hDlg, g_strTable[(int)Msg::End_address_is_incorrect], NULL, 0);
-				break;
-			}
-			if (end > 65535) {
-				MessageBox(hDlg, g_strTable[(int)Msg::Address_range_is_from_0_to_FFFF], NULL, 0);
-				break;
-			}
-
-			if (start >= end) {
-				MessageBox(hDlg, g_strTable[(int)Msg::Invalid_range_specification], NULL, 0);
-				break;
-			}
-
-			ImmAssociateContext(g_hMainWnd, hImc);
-
-			OPENFILENAME ofn = {0};
-			ofn.lStructSize = sizeof(OPENFILENAME);
-			ofn.hwndOwner = hDlg;
-			ofn.lpstrFilter = g_strTable[(int)Msg::CJR_File];
-			ofn.nMaxCustFilter = 256;
-			ofn.nFilterIndex = 0;
-			ofn.lpstrFile = tmpFileName;
-			ofn.nMaxFile = MAX_PATH;
-			ofn.Flags = OFN_FILEMUSTEXIST | OFN_OVERWRITEPROMPT;
-
-			if (GetSaveFileName(&ofn)) {
-				TCHAR chkStr[MAX_PATH];
-				_tcscpy(chkStr, tmpFileName);
-				_tcsupr(chkStr);
-				if (_tcsncmp(_tcsrev(chkStr), _T("RJC."), 4) != 0)
-					_tcscat(tmpFileName, _T(".cjr"));
-
-				CjrFormat cjr;
-				uint8_t* saveData = cjr.MemToCjrBin(jrName, start, end);
-
-				int size = cjr.GetCjrSize();
-
-				HANDLE hFile;
-				DWORD dwNumberOfBytesWritten;
-				hFile = CreateFile(tmpFileName,
-					GENERIC_WRITE,
-					0,
-					0,
-					CREATE_ALWAYS,
-					0,
-					0
-				);
-				if (hFile == INVALID_HANDLE_VALUE) {
-					MessageBox(hDlg, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
-					CloseHandle(hFile);
-					break;
-				}
-
-				WriteFile(hFile,
-					saveData,
-					size,
-					&dwNumberOfBytesWritten,
-					NULL);
-
-				CloseHandle(hFile);
-			}
-
-			hImc = ImmAssociateContext(g_hMainWnd, 0);
-			break;
-		}
-		case IDCANCEL:
-			EndDialog(hDlg, LOWORD(wParam));
-			break;
-		}
-		return (INT_PTR)TRUE;
-		break;
-	}
-	}
-	return (INT_PTR)FALSE;
 }
 
 
@@ -2619,6 +2522,19 @@ void SetMenuItemState(HMENU hMenu)
 		CheckMenuItem(hMenu, IDM_VIEW_STATUSBAR, MF_UNCHECKED);
 	}
 
+	if (g_bDetachFdd) {
+		CheckMenuItem(hMenu, IDM_FDD_DETACHFDD, MF_CHECKED);
+	}
+	else {
+		CheckMenuItem(hMenu, IDM_FDD_DETACHFDD, MF_UNCHECKED);
+	}
+
+	//if (_tcslen(g_pFdRomFile) == 0) {
+	//	EnableMenuItem(hMenu, 1, MF_BYPOSITION | MF_GRAYED);
+	//}
+	//else {
+	//	EnableMenuItem(hMenu, 1, MF_BYPOSITION | MF_ENABLED);
+	//}
 
 	SetMenuItemForRecentFiles();
 	SetMenuItemForStateSaveLoad();
@@ -2850,7 +2766,7 @@ void GetStateFilePathName(TCHAR pathName[], int idx)
 {
 	TCHAR path[MAX_PATH];
 
-	if (g_pTapeFormat == nullptr) {
+	if (g_pTapeFormat == nullptr || (!g_bDetachFdd && g_bFddEnabled)) {
 		SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA, NULL, NULL, path);
 		_tcscat(path, APPDATA_PATH);
 		_tcscat(path, _T("nomount"));
@@ -3078,6 +2994,41 @@ int CheckFileFormat(const TCHAR* fileName)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+// ディスクフォーマットの判別
+//
+// 0:エラー　　1:D88
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+int CheckDiskFormat(const TCHAR* fileName)
+{
+	uint32_t fileSize;
+	int result = 0;
+
+	struct _stat stbuf;
+	int st = _tstat(fileName, &stbuf);
+	if (st != 0) return 0;
+	fileSize = stbuf.st_size;
+
+	TCHAR chkStr[MAX_PATH];
+	_tcscpy(chkStr, fileName);
+	_tcsupr(chkStr);
+
+	if (_tcsncmp(_tcsrev(chkStr), _T("02D."), 3) != 0) {
+		return 0;
+	}
+	else {
+		if (fileSize > D88_FILE_MAX)
+			return 0;
+		else
+			return 1;
+	}
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 // テープファイルをマウント
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3091,7 +3042,7 @@ void MountTapeFile(const TCHAR* strFile, int type)
 		}
 		g_pTapeFormat = new CjrFormat();
 		if (!g_pTapeFormat->Init(strFile))
-			MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+			MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 	}
 	else if (type == 2) {
 		// JR2処理
@@ -3101,7 +3052,7 @@ void MountTapeFile(const TCHAR* strFile, int type)
 		}
 		g_pTapeFormat = new Jr2Format();
 		if (!g_pTapeFormat->Init(strFile))
-			MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+			MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 	}
 
 }

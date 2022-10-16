@@ -202,6 +202,54 @@ HRESULT Crtc::CreateDeviceResources()
 				&pBlackBrush
 			);
 		}
+
+		// FDD アイコン作成
+		if (SUCCEEDED(hr))
+		{
+			hr = ConvertToD2DBitmap(
+				pHwndRT,
+				pWICImagingFactory,
+				IDB_FDD1_ACTIVE,
+				22,
+				16,
+				&pFd1active
+			);
+		}
+
+		if (SUCCEEDED(hr))
+		{
+			hr = ConvertToD2DBitmap(
+				pHwndRT,
+				pWICImagingFactory,
+				IDB_FDD1_INACTIVE,
+				22,
+				16,
+				&pFd1Inactive
+			);
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = ConvertToD2DBitmap(
+				pHwndRT,
+				pWICImagingFactory,
+				IDB_FDD2_ACTIVE,
+				22,
+				16,
+				&pFd2active
+			);
+		}
+
+		if (SUCCEEDED(hr))
+		{
+			hr = ConvertToD2DBitmap(
+				pHwndRT,
+				pWICImagingFactory,
+				IDB_FDD2_INACTIVE,
+				22,
+				16,
+				&pFd2Inactive
+			);
+		}
 	}
 
 	return hr;
@@ -215,9 +263,13 @@ HRESULT Crtc::CreateDeviceResources()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Crtc::DiscardDeviceResources()
 {
-	SafeRelease(&pBitmap);
+	SafeRelease(&pFd1active);
+	SafeRelease(&pFd1Inactive);
+	SafeRelease(&pFd2active);
+	SafeRelease(&pFd2Inactive);
 	SafeRelease(&pGrayBrush);
 	SafeRelease(&pBlackBrush);
+	SafeRelease(&pBitmap);
 	SafeRelease(&pHwndRT);
 }
 #endif
@@ -245,6 +297,8 @@ HRESULT Crtc::OnRender()
 {
 	HRESULT hr = S_OK;
 	int statusbarHeight = g_bStatusBar ? STATUSBAR_HEIGHT: 0;
+	int fddBmpSizeX = 22;
+	int fddMargin = 2;
 
 	hr = CreateDeviceResources();
 	if (SUCCEEDED(hr))
@@ -303,17 +357,31 @@ HRESULT Crtc::OnRender()
 			RECT rect;
 			GetClientRect(g_hMainWnd, &rect);
 
-			D2D1_RECT_F statusBarRect = D2D1::RectF(0, rtSize.height - statusbarHeight, rtSize.width, rtSize.height);
-			D2D1_RECT_F fileNameRect = D2D1::RectF(0, rtSize.height - statusbarHeight, rtSize.width - COUNTER_WIDTH - CMTSTAT_WIDTH, rtSize.height);
-			D2D1_RECT_F counterRect = D2D1::RectF(rtSize.width - COUNTER_WIDTH, rtSize.height - statusbarHeight, rtSize.width, rtSize.height);
-			D2D1_RECT_F cmtRect = D2D1::RectF(rtSize.width - COUNTER_WIDTH - CMTSTAT_WIDTH, rtSize.height - statusbarHeight, rtSize.width - COUNTER_WIDTH, rtSize.height);
+			if (g_bDetachFdd || !g_bFddEnabled) {
+				fddBmpSizeX = 0;
+				fddMargin = 0;
+			}
 
+			D2D1_RECT_F statusBarRect = D2D1::RectF(0, rtSize.height - statusbarHeight, rtSize.width, rtSize.height);
+			D2D1_RECT_F fileNameRect = D2D1::RectF(0, rtSize.height - statusbarHeight, rtSize.width - COUNTER_WIDTH - CMTSTAT_WIDTH - fddBmpSizeX * 2 - fddMargin * 2, rtSize.height);
+			D2D1_RECT_F counterRect = D2D1::RectF(rtSize.width - COUNTER_WIDTH - fddBmpSizeX * 2, rtSize.height - statusbarHeight, rtSize.width - fddBmpSizeX * 2 - fddMargin * 2, rtSize.height);
+			D2D1_RECT_F cmtRect = D2D1::RectF(rtSize.width - COUNTER_WIDTH - CMTSTAT_WIDTH - fddBmpSizeX * 2, rtSize.height - statusbarHeight, rtSize.width - COUNTER_WIDTH - fddBmpSizeX * 2 - fddMargin * 2, rtSize.height);
+
+			// テープファイル名
 			pHwndRT->FillRectangle(statusBarRect, pGrayBrush);
 			wchar_t buf[MAX_PATH] = {};
 			if (g_pTapeFormat != nullptr)
 				GetFileTitle(g_pTapeFormat->GetFileName(), buf, MAX_PATH);
 
-			// ファイル名
+			// Diskイメージ名
+			if (!g_bDetachFdd && g_bFddEnabled) {
+				_tcscat(buf, _T(";"));
+				_tcscat(buf, sys.pFddSystem->mountedFileName[0].c_str());
+				_tcscat(buf, _T(";"));
+				_tcscat(buf, sys.pFddSystem->mountedFileName[1].c_str());
+			}
+
+			// ファイル名描画
 			pHwndRT->DrawText(
 				buf,
 				(uint32_t)_tcslen(buf),
@@ -349,6 +417,26 @@ HRESULT Crtc::OnRender()
 					pBlackBrush
 				);
 			}
+
+			// FDD
+			if (!g_bDetachFdd && g_bFddEnabled) {
+				D2D1_RECT_F fdd1Rect = D2D1::RectF(rtSize.width - fddBmpSizeX * 2 - fddMargin, rtSize.height - statusbarHeight + 2, rtSize.width - fddBmpSizeX - fddMargin, rtSize.height - 2);
+				D2D1_RECT_F fdd2Rect = D2D1::RectF(rtSize.width - fddBmpSizeX - fddMargin, rtSize.height - statusbarHeight + 2, rtSize.width - fddMargin, rtSize.height - 2);
+
+				if (sys.pFddSystem->GetFddStatus(0)) {
+					pHwndRT->DrawBitmap(pFd1active, &fdd1Rect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, NULL);
+				}
+				else {
+					pHwndRT->DrawBitmap(pFd1Inactive, &fdd1Rect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, NULL);
+				}
+
+				if (sys.pFddSystem->GetFddStatus(1)) {
+					pHwndRT->DrawBitmap(pFd2active, &fdd2Rect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, NULL);
+				}
+				else {
+					pHwndRT->DrawBitmap(pFd2Inactive, &fdd2Rect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, NULL);
+				}
+			}
 		}
 
 		hr = pHwndRT->EndDraw();
@@ -362,6 +450,144 @@ HRESULT Crtc::OnRender()
 
 	return hr;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// BITMAPリソースをD2DBITMAPに変換
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+HRESULT Crtc::ConvertToD2DBitmap(
+	ID2D1RenderTarget *pRenderTarget,
+	IWICImagingFactory *pIWICFactory,
+	UINT resourceId,
+	UINT destinationWidth,
+	UINT destinationHeight,
+	ID2D1Bitmap **pBmp
+)
+{
+	HRESULT hr = S_OK;
+
+	HRSRC imageResHandle = NULL;
+	HGLOBAL imageResDataHandle = NULL;
+	void* pImageFile = NULL;
+	DWORD imageFileSize = 0;
+	IWICStream* pStream = NULL;
+	IWICBitmapFrameDecode* pSource = NULL;
+	IWICBitmapDecoder* pDecoder = NULL;
+	IWICFormatConverter* pConverter = NULL;
+
+
+	// Locate the resource.
+	imageResHandle = FindResource(g_hInst, MAKEINTRESOURCE(resourceId), RT_BITMAP);
+
+	hr = imageResHandle ? S_OK : E_FAIL;
+	if (SUCCEEDED(hr))
+	{
+		// Load the resource.
+		imageResDataHandle = LoadResource(g_hInst, imageResHandle);
+
+		hr = imageResDataHandle ? S_OK : E_FAIL;
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		// Lock it to get a system memory pointer.
+		pImageFile = LockResource(imageResDataHandle);
+
+		hr = pImageFile ? S_OK : E_FAIL;
+	}
+	if (SUCCEEDED(hr))
+	{
+		// Calculate the size.
+		imageFileSize = SizeofResource(g_hInst, imageResHandle);
+
+		hr = imageFileSize ? S_OK : E_FAIL;
+
+	}
+
+	BITMAPFILEHEADER header;
+	header.bfType = 0x4D42; // 'BM'
+	header.bfSize = imageFileSize + 14; // resource data size + 14 bytes header
+	header.bfReserved1 = 0;
+	header.bfReserved2 = 0;
+	header.bfOffBits = 14 + 40; // details in bitmap format
+
+	BYTE* buffer = new BYTE[header.bfSize];
+
+	if (SUCCEEDED(hr))
+	{
+		// Create a WIC stream to map onto the memory.
+		hr = pWICImagingFactory->CreateStream(&pStream);
+	}
+
+	memcpy(buffer, &header, 14);
+	memcpy(buffer + 14, pImageFile, imageFileSize);
+
+	if (SUCCEEDED(hr))
+	{
+		hr = pStream->InitializeFromMemory(
+			reinterpret_cast<BYTE*>(buffer),
+			header.bfSize
+		);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		// Create a decoder for the stream.
+		hr = pWICImagingFactory->CreateDecoderFromStream(
+			pStream,
+			NULL,
+			WICDecodeMetadataCacheOnLoad,
+			&pDecoder
+		);
+	}
+
+	// Retrieve the first frame of the image from the decoder
+	if (SUCCEEDED(hr))
+	{
+		hr = pDecoder->GetFrame(0, &pSource);
+	}
+
+
+	if (SUCCEEDED(hr))
+	{
+		// Convert the image format to 32bppPBGRA
+		// (DXGI_FORMAT_B8G8R8A8_UNORM + D2D1_ALPHA_MODE_PREMULTIPLIED).
+		hr = pWICImagingFactory->CreateFormatConverter(&pConverter);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		hr = pConverter->Initialize(
+			pSource,
+			GUID_WICPixelFormat32bppPBGRA,
+			WICBitmapDitherTypeNone,
+			NULL,
+			0.f,
+			WICBitmapPaletteTypeMedianCut
+		);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		//create a Direct2D bitmap from the WIC bitmap.
+		hr = pHwndRT->CreateBitmapFromWicBitmap(
+			pConverter,
+			NULL,
+			pBmp
+		);
+
+	}
+
+	delete[] buffer;
+	SafeRelease(&pDecoder);
+	SafeRelease(&pSource);
+	SafeRelease(&pStream);
+	SafeRelease(&pConverter);
+
+	return hr;
+}
+
 #else // Android
 void Crtc::OnRender(uint32_t*  s)
 {
@@ -369,6 +595,7 @@ void Crtc::OnRender(uint32_t*  s)
     SetPixelData();
 }
 #endif
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //

@@ -49,33 +49,9 @@ bool Address::Init()
         return false;
 
     memset(memory, 0, 0xffff);
-	
-	switch (g_ramInitPattern) {
-	case 0:
-		for (int i = 0; i < 0x8000; i += 4) {
-			if ((i & 0x100) == 0) {
-				memory[i] = 0xff;
-				memory[i + 1] = 0xff;
-			}
-			else {
-				memory[i + 2] = 0xff;
-				memory[i + 3] = 0xff;
-			}
-		}
-		break;
-	case 1:
-		for (int i = 0; i < 0x8000; i += 2) {
-			if ((i & 0x80) == 0) {
-				memory[i + 1] = 0xff;
-			}
-			else {
-				memory[i] = 0xff;
-			}
-		}
-		break;
-	}
+	SetRamPattern(0, 0x8000);
 
-
+	// ユーザー定義RAMのパターン
     for (int i = 0xc001; i < 0xc100; i += 2) {
         memory[i] = 0xff;
     }
@@ -131,6 +107,44 @@ bool Address::Init()
     return true;
 }
 
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// RAMパターンのセット
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Address::SetRamPattern(uint16_t sAddress, uint16_t eAddress)
+{
+	switch (g_ramInitPattern) {
+	case 0:
+		for (int i = sAddress; i < eAddress; i += 4) {
+			if ((i & 0x100) == 0) {
+				memory[i] = 0xff;
+				memory[i + 1] = 0xff;
+			}
+			else {
+				memory[i + 2] = 0xff;
+				memory[i + 3] = 0xff;
+			}
+		}
+		break;
+	case 1:
+		for (int i = sAddress; i < eAddress; i += 2) {
+			if ((i & 0x80) == 0) {
+				memory[i + 1] = 0xff;
+			}
+			else {
+				memory[i] = 0xff;
+			}
+		}
+		break;
+	}
+}
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // 指定されたアドレスを1byte読む
@@ -182,15 +196,19 @@ uint8_t Address::ReadByte(uint16_t address)
             return sys.pMn1271->Read(i);
             break;
         }
-            break;
         case DevType:: Crtc:
         {
             int i = address - 0xca00;
             return sys.pCrtc->Read(i);
             break;
         }
-            break;
-        default:
+		case DevType::Fdd:
+		{
+			int i = address - 0xcc00;
+			return sys.pFddSystem->Read(i);
+			break;
+		}
+		default:
             assert(false);
             return 0;
     }
@@ -224,15 +242,19 @@ uint8_t Address::ReadByteForDebug(uint16_t address)
             return sys.pMn1271->ReadForDebug(i);
             break;
         }
-            break;
         case DevType::Crtc:
         {
             int i = address - 0xca00;
             return sys.pCrtc->Read(i);
             break;
         }
-            break;
-        default:
+		case DevType::Fdd:
+		{
+			int i = address - 0xcc00;
+			return sys.pFddSystem->ReadForDebug(i);
+			break;
+		}
+		default:
             assert(false);
             return 0;
     }
@@ -293,6 +315,12 @@ void Address::WriteByte(uint16_t address, uint8_t b)
             sys.pCrtc->Write(i, b);
             break;
         }
+		case DevType::Fdd:
+		{
+			int i = address - 0xcc00;
+			sys.pFddSystem->Write(i, b);
+			break;
+		}
     }
 }
 
@@ -314,8 +342,10 @@ BOOL Address::LoadRomFile()
     }
 
 	if (bResult) {
-		if (!(buff = new uint8_t[MEM_SIZE]))
+		if (!(buff = new uint8_t[MEM_SIZE])) {
+			fclose(fp);
 			bResult = FALSE;
+		}
 	}
 
 	if (bResult) {
@@ -325,6 +355,36 @@ BOOL Address::LoadRomFile()
 		if (!g_bRamExpand2)
 			memcpy(&memory[0xa000], buff, 8192);
 		memcpy(&memory[0xe000], &buff[8192], 8192);
+
+		// FDROM
+		if (!g_bDetachFdd) {
+			fp = _tfopen(g_pFdRomFile, _T("rb"));
+			if (fp == nullptr) {
+				_tcscpy(g_pFdRomFile, _T(""));
+			}
+			else {
+				fread(buff, sizeof(uint8_t), MEM_SIZE, fp);
+				fclose(fp);
+
+				g_bFddEnabled = true;
+				memcpy(&memory[0xd800], buff, 2048);
+
+				memset(&memory[0x8000], 0, 16384);
+				SetRamPattern(0x8000, 0xbfff);
+
+				for (int i = 0x8000; i <= 0xbfff; ++i) {
+					attribute[i] = DevType::Ram;
+				}
+				for (int i = 0xd800; i <= 0xdfff; ++i) {
+					attribute[i] = DevType::Rom;
+				}
+				for (int i = 0xcc00; i <= 0xccff; ++i) {
+					attribute[i] = DevType::Fdd;
+				}
+			}
+
+		}
+
 	}
 
 	if (buff != nullptr) delete[] buff;
@@ -413,7 +473,7 @@ bool Address::CjrQuickLoad(const TCHAR* filename)
 			for (int i = 0; i < size; ++i)
 				WriteByte(0x801 + i, bin[i]);
 
-			uint16_t a = (uint16_t)(0x801 + cjr.GetBinSize()) - 1;
+			uint16_t a = (uint16_t)(0x801 + cjr.GetBinSize());
 			memory[0x71] = (uint8_t)(a >> 8);
 			memory[0x72] = (uint8_t)a;
 		}

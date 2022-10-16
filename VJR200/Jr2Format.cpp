@@ -171,7 +171,7 @@ void Jr2Format::Next()
 	}
 	if (fp == nullptr) {
 #ifndef _ANDROID
-		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 #endif
 		return;
 	}
@@ -279,7 +279,7 @@ void Jr2Format::Prev()
 	}
 	if (fp == nullptr) {
 #ifndef _ANDROID
-		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 #endif
 		return;
 	}
@@ -383,7 +383,7 @@ void Jr2Format::remoteOn()
 
 	if (fp == nullptr) {
 #ifndef _ANDROID
-		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], NULL, 0);
+		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_open_the_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 #endif
 		return;
 	}
