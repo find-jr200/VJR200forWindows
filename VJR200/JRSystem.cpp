@@ -29,7 +29,7 @@
 #include "Jr2Format.h"
 #include "SerializeGlobal.h"
 
-JRSystem::JRSystem()
+JRSystem::JRSystem() : step(0), stateSave(-1), stateLoad(-1)
 {
 }
 
@@ -275,14 +275,18 @@ void JRSystem::Save()
     }
     catch (...) {
 #ifdef _ANDROID
+		stateSave = -1;
         __android_log_write(ANDROID_LOG_DEBUG, "JRSYstem.Save","ステートセーブに失敗しました");
+		throw(2);
 #else
+		stateSave = -1;
 		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_save_the_state_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
 #endif
     }
 
 #ifndef _ANDROID
-    SetMenuItemForStateSaveLoad();
+	stateSave = -1;
+	SetMenuItemForStateSaveLoad();
 #endif
 }
 
@@ -321,16 +325,28 @@ void JRSystem::Load()
             }
         }
     }
-	catch (TCHAR* c) 
-	{
-		MessageBox(g_hMainWnd, c, g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
-	}
-    catch (...) {
 #ifdef _ANDROID
-        __android_log_write(ANDROID_LOG_DEBUG, "JRSYstem.Load","ステートロードに失敗しました");
+	catch (int e) {
+		stateLoad = -1;
+		throw (e);
+	}
 #else
-        MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_load_the_state_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONERROR);
+	catch (TCHAR* c)
+	{
+		stateLoad = -1;
+		MessageBox(g_hMainWnd, c, g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
+}
 #endif
+	catch (...) {
+#ifdef _ANDROID
+		__android_log_write(ANDROID_LOG_DEBUG, "JRSYstem.Load", "ステートロードに失敗しました");
+		stateLoad = -1;
+		throw(1);
+#else
+		stateLoad = -1;
+		MessageBox(g_hMainWnd, _T("ステートロードに失敗しました"), _T("エラー"), MB_OK);
+#endif
+
 
     }
 }

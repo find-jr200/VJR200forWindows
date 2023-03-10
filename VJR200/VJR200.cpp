@@ -44,13 +44,13 @@ const float REAL_WRATIO = 0.85f;
 const int STR_RESOURCE_NUM = 44;
 const unsigned int RECENT_FILES_NUM = 10;
 const int CJR_FILE_MAX = 65536;
+const int JR2_FILE_MAX = 2147483647;
 const int D88_FILE_MAX = 2000000;
 const int CPU_SPEED_MAX = 1000;
 const int BREAKPOINT_NUM = 12;
 const int RW_BREAKPOINT_NUM = 5;
 const TCHAR* APPDATA_PATH = _T("\\FIND_JR\\VJR200\\");
 const int CEREAL_VER = 2;
-extern const int JUMP_HISTORY_SIZE;
 const int JUMP_HISTORY_SIZE = 24;
 
 // グラフキーボード用テーブル
@@ -1497,7 +1497,7 @@ INT_PTR CALLBACK DlgMacroProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 			GetWindowText(GetDlgItem(hwnd, IDC_MACRO_INPUT), str, MACRO_MAX_LEN);
 			Rtrim(str);
 			if (_tcslen(str) != 0) {
-				wsprintf(strbuff, L"%d:", g_macroStrings.size() + 1);
+				wsprintf(strbuff, L"%d:", (int)g_macroStrings.size() + 1);
 				_tcscat(strbuff, str);
 				SendMessage(hWndList, LB_ADDSTRING, 0, (LPARAM)strbuff);
 				g_macroStrings.push_back(str);
@@ -2951,11 +2951,11 @@ int CheckFileFormat(const TCHAR* fileName)
 {
 	int ret = 0;
 	FILE* fp;
-	uint32_t fileSize;
+	uint64_t fileSize;
 	char buf[4];
 
-	struct _stat stbuf;
-	int st = _tstat(fileName, &stbuf);
+	struct _stat32i64 stbuf;
+	int st = _wstat32i64(fileName, &stbuf);
 	if (st != 0) return 0;
 	fileSize = stbuf.st_size;
 
@@ -2977,6 +2977,7 @@ int CheckFileFormat(const TCHAR* fileName)
 	}
 	else if (_tcsncmp(chkStr, _T("2RJ."), 3) == 0) {
 		// JR2
+		if (fileSize >= JR2_FILE_MAX) return 0;
 		fp = _tfopen(fileName, _T("rb"));
 		if (fp == nullptr)
 			return ret;

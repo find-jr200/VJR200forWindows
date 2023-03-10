@@ -39,8 +39,8 @@ public:
 	void Load();
 protected:
 	int step;
-	int stateSave = -1;
-	int stateLoad = -1;
+	int stateSave;
+	int stateLoad;
 };
 
 #endif

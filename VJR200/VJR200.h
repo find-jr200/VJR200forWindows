@@ -29,6 +29,8 @@ extern const TCHAR* APPDATA_PATH;
 extern const uint8_t g_gcharCode1[][14];
 extern const uint8_t g_gcharCode2[][14];
 extern const int CEREAL_VER;
+extern const int JUMP_HISTORY_SIZE;
+
 
 // グローバル変数:
 #ifndef _ANDROID
