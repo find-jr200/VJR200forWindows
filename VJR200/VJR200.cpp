@@ -44,7 +44,6 @@ const float REAL_WRATIO = 0.85f;
 const int STR_RESOURCE_NUM = 44;
 const unsigned int RECENT_FILES_NUM = 10;
 const int CJR_FILE_MAX = 65536;
-const int JR2_FILE_MAX = 2147483647;
 const int D88_FILE_MAX = 2000000;
 const int CPU_SPEED_MAX = 1000;
 const int BREAKPOINT_NUM = 12;
@@ -2951,11 +2950,11 @@ int CheckFileFormat(const TCHAR* fileName)
 {
 	int ret = 0;
 	FILE* fp;
-	uint64_t fileSize;
+	long fileSize;
 	char buf[4];
 
-	struct _stat32i64 stbuf;
-	int st = _wstat32i64(fileName, &stbuf);
+	struct _stat stbuf;
+	int st = _tstat(fileName, &stbuf);
 	if (st != 0) return 0;
 	fileSize = stbuf.st_size;
 
@@ -2965,7 +2964,7 @@ int CheckFileFormat(const TCHAR* fileName)
 
 	if (_tcsncmp(_tcsrev(chkStr), _T("RJC."), 3) == 0) {
 		// CJR
-		if (fileSize >= CJR_FILE_MAX) return 0;
+		if (fileSize > CJR_FILE_MAX) return 0;
 		fp = _tfopen(fileName, _T("rb"));
 		if (fp == nullptr)
 			return ret;
@@ -2977,7 +2976,6 @@ int CheckFileFormat(const TCHAR* fileName)
 	}
 	else if (_tcsncmp(chkStr, _T("2RJ."), 3) == 0) {
 		// JR2
-		if (fileSize >= JR2_FILE_MAX) return 0;
 		fp = _tfopen(fileName, _T("rb"));
 		if (fp == nullptr)
 			return ret;
