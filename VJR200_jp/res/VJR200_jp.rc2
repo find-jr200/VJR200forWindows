@@ -9,9 +9,9 @@ FONT 9, "MS UI Gothic", 400, 0, 0x80
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,129,197,50,14
 #ifdef _WIN64
-    LTEXT           "VJR200, Version 1.7.1 (64bit)",IDC_STATIC,47,12,91,8
+    LTEXT           "VJR200, Version 1.7.2 (64bit)",IDC_STATIC,47,12,91,8
 #else
-    LTEXT           "VJR200, Version 1.7.1 (32bit)",IDC_STATIC,47,12,91,8
+    LTEXT           "VJR200, Version 1.7.2 (32bit)",IDC_STATIC,47,12,91,8
 #endif
     LTEXT           "Copyright 2017,2023  FIND",IDC_STATIC,53,28,79,8
     LTEXT           "VJR-200には以下のソフトウェアを使わせて頂きました。",IDC_STATIC,7,43,172,16

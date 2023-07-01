@@ -1443,8 +1443,7 @@ void Mn1271::SoundDataCopy(int ch, UINT n)
 			*(localBuf[ch] + a + 1) = (uint8_t)(d >> 8);
 			localBufPointer[ch] += 2;
 		}
-		if (localBufPointer[ch] >= blockSize)
-			localBufPointer[ch] = 0;
+		_ASSERT(localBufPointer[ch] <= blockSize);
 
 		memcpy_s(lpBlockAdd1, blockSize1, localBuf[ch], blockSize1);
 
@@ -1579,8 +1578,7 @@ void Mn1271::WriteLocalBuffer(int ch)
 				*(localBuf[ch] + localBufPointer[ch]++) = (uint8_t)d;
 				*(localBuf[ch] + localBufPointer[ch]++) = (uint8_t)(d >> 8);
 			}
-			if (localBufPointer[ch] >= blockSize)
-				localBufPointer[ch] = 0;
+			_ASSERT(localBufPointer[ch] <= blockSize);
 		}
 
 		err = SetEvent(bufWriteEvent[ch]);
