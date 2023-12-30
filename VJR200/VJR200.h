@@ -63,6 +63,7 @@ extern ITapeFormat* g_pTapeFormat;
 extern std::map<int, std::wstring> g_debugLabel;
 extern TCHAR g_RWBreak[];
 extern bool g_bFddEnabled;
+extern int g_rotate;
 
 // ダイアログ・ini保存項目
 extern int g_cpuScale;

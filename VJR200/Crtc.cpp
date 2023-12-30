@@ -304,53 +304,143 @@ HRESULT Crtc::OnRender()
 	if (SUCCEEDED(hr))
 	{
 		pHwndRT->BeginDraw();
-		pHwndRT->SetTransform(D2D1::Matrix3x2F::Identity());
 		pHwndRT->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
 		SetPixelData(); // ここでJR-200の表示作成
 		hr = pBitmap->CopyFromMemory(NULL, pixelData, BITMAP_W * sizeof(uint32_t));
 
-		D2D1_SIZE_F rtSize = pHwndRT->GetSize();
-		D2D1_RECT_F dst;
+		const D2D1_SIZE_F rtSize = pHwndRT->GetSize();
+		D2D1_RECT_F dst = { 0.f, 0.f , 0.f , 0.f };
+
+		float w_ratio = 1.f;
+		if (!g_bSquarePixel)
+			w_ratio = REAL_WRATIO;
 
 		if (bFullScreen)
 		{
+			// フルスクリーン表示-----------------------------------------------------------------
 			int dspW = GetSystemMetrics(SM_CXVIRTUALSCREEN);
 			int dspH = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-			float jrAspect = (float)BITMAP_W / BITMAP_H;
+			float jrAspect = (float)BITMAP_W * w_ratio / BITMAP_H;
 			float dspAspect = (float)dspW / dspH;
+
 			if (dspAspect > jrAspect)
 			{
-				// 横長
-				rtSize.height = (float)dspH;
-				if (g_bSquarePixel)
-					rtSize.width = dspH * jrAspect;
-				else
-					rtSize.width = dspH * jrAspect * REAL_WRATIO;
-				float offset = (dspW - rtSize.width) / (float)2;
-				dst = D2D1::RectF(offset, 0, rtSize.width + offset, rtSize.height);
+				// 横長ディスプレイ
+				dst.right = (float)dspH;
+				dst.bottom = dspH / jrAspect;
+				
+				if (g_rotate == 90 || g_rotate == 270) {
+					// 縦表示
+					float offset_x = (dspW - dst.right) / 2.f;
+					float offset_y = (dspH - dst.bottom) / 2.f;
+					dst.left += offset_x;
+					dst.right += offset_x;
+					dst.top += offset_y;
+					dst.bottom += offset_y;
+				}
+				else {
+					// 横表示
+					float offset = (dspW - dspH * jrAspect) / 2.f;
+					dst = D2D1::RectF(offset, 0.f, dspH * jrAspect + offset, (float)dspH);
+				}
 			}
 			else {
-				// 縦長
-				if (g_bSquarePixel)
-					rtSize.height = dspW / jrAspect;
-				else
-					rtSize.height = dspW / jrAspect * REAL_WRATIO;
-				rtSize.width = (float)dspW;
-				float offset = (dspH - rtSize.height) / (float)2;
-				dst = D2D1::RectF(0, offset, rtSize.width, rtSize.height + offset);
+				// 縦長ディスプレイ
+				dst.bottom = (float)dspW;
+
+				dst.right = dspW * jrAspect;
+
+				if (g_rotate == 90 || g_rotate == 270) {
+					// 縦表示
+					float offset_x = (dspW - dst.right) / 2.f;
+					float offset_y = (dspH - dst.bottom) / 2.f;
+					dst.left += offset_x;
+					dst.right += offset_x;
+					dst.top += offset_y;
+					dst.bottom += offset_y;
+				}
+				else {
+					// 横表示
+					float offset = (dspH - dspW / jrAspect) / 2.f;
+					dst = D2D1::RectF(0.f, offset, (float)dspW, dspW / jrAspect + offset);
+				}
+			}
+
+			// 回転表示指定
+			if (g_rotate == 0) {
+				pHwndRT->SetTransform(D2D1::Matrix3x2F::Identity());
+			}
+			else {
+				pHwndRT->SetTransform(D2D1::Matrix3x2F::Rotation(
+					(float)g_rotate,
+					D2D1::Point2F(dspW / 2.f, dspH / 2.f)
+				));
+			}
+
+			// JR-200画面描画
+			int interpolation = D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR;
+			if (g_bSmoothing) {
+				interpolation = D2D1_BITMAP_INTERPOLATION_MODE_LINEAR;
+			}
+
+			pHwndRT->DrawBitmap(pBitmap, &dst, 1.0f, (D2D1_BITMAP_INTERPOLATION_MODE)interpolation, NULL);
+		}
+		else {
+			// Window表示----------------------------------------------------------------------------------------
+			dst = D2D1::RectF(0.f, 0.f, (float)BITMAP_W * g_viewScale * w_ratio, (float)BITMAP_H * g_viewScale);
+
+			// 回転表示指定
+			if (g_rotate == 0) {
+				pHwndRT->SetTransform(D2D1::Matrix3x2F::Identity());
+			}
+			else {
+				pHwndRT->SetTransform(D2D1::Matrix3x2F::Rotation(
+					(float)g_rotate,
+					D2D1::Point2F(dst.right / 2, dst.bottom / 2)
+				));
+			}
+
+			// JR-200画面描画
+			int interpolation = D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR;
+			if (g_bSmoothing) {
+				interpolation = D2D1_BITMAP_INTERPOLATION_MODE_LINEAR;
+			}
+
+			switch (g_rotate) {
+			case 0:
+			{
+				pHwndRT->DrawBitmap(pBitmap, &dst, 1.0f, (D2D1_BITMAP_INTERPOLATION_MODE)interpolation, NULL);
+				break;
+			}
+			case 90:
+			{
+				int dif = (int)((dst.right - dst.bottom) / 2);
+				dst.right += dif; dst.left += dif; dst.top += dif; dst.bottom += dif;
+				pHwndRT->DrawBitmap(pBitmap, &dst, 1.0f, (D2D1_BITMAP_INTERPOLATION_MODE)interpolation, NULL);
+				break;
+			}
+			case 180:
+			{
+				pHwndRT->DrawBitmap(pBitmap, &dst, 1.0f, (D2D1_BITMAP_INTERPOLATION_MODE)interpolation, NULL);
+				break;
+			}
+			case 270:
+			{
+				int dif = (int)((dst.right - dst.bottom) / 2);
+				dst.right -= dif; dst.left -= dif; dst.top -= dif; dst.bottom -= dif;
+				pHwndRT->DrawBitmap(pBitmap, &dst, 1.0f, (D2D1_BITMAP_INTERPOLATION_MODE)interpolation, NULL);
+				break;
+			}
+			default:
+				pHwndRT->DrawBitmap(pBitmap, &dst, 1.0f, (D2D1_BITMAP_INTERPOLATION_MODE)interpolation, NULL);
+				break;
 			}
 		}
-		else {
-			dst = D2D1::RectF(0, 0, rtSize.width, rtSize.height - statusbarHeight);
-		}
 
-		if (g_bSmoothing) {
-			pHwndRT->DrawBitmap(pBitmap, &dst, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, NULL);
-		}
-		else {
-			pHwndRT->DrawBitmap(pBitmap, &dst, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, NULL);
-		}
+
+		// 回転を元に戻す
+		pHwndRT->SetTransform(D2D1::Matrix3x2F::Identity());
 
 		if (!bFullScreen && statusbarHeight != 0)
 		{
@@ -687,4 +777,3 @@ void Crtc::SetPixelData()
         }
     }
 }
-

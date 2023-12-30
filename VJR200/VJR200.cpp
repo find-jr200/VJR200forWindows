@@ -97,6 +97,7 @@ TCHAR g_JumpHistory[JUMP_HISTORY_SIZE][12] = { 0 };
 int g_JumpHistory_index = 0;
 TCHAR g_RWBreak[10] = { 0 };
 bool g_bFddEnabled = false;
+int g_rotate = 0;
 
 JRSystem sys;
 
@@ -828,6 +829,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			sys.pCrtc->Resize(false);
 			break;
 		}
+		case IDM_VIEW_X4:
+		{
+			g_viewScale = 4;
+			ChangeWindowSize(hMenu);
+			sys.pCrtc->Resize(false);
+			break;
+		}
+		case IDM_VIEW_X5:
+		{
+			g_viewScale = 5;
+			ChangeWindowSize(hMenu);
+			sys.pCrtc->Resize(false);
+			break;
+		}
 		case IDM_VIEW_FULL:
 		{
 			if (bFullScreen) { // フルスクリーンからウィンドウに戻る
@@ -886,6 +901,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				CheckMenuItem(hMenu, IDM_VIEW_PRINTERLED, MF_CHECKED);
 			}
 			DrawMenuBar(hWnd);
+			break;
+		case IDM_VIEW_R0:
+			g_rotate = 0;
+			ChangeWindowSize(hMenu);
+			sys.pCrtc->Resize(false);
+			break;
+		case IDM_VIEW_R90:
+			g_rotate = 90;
+			ChangeWindowSize(hMenu);
+			sys.pCrtc->Resize(false);
+			break;
+		case IDM_VIEW_R180:
+			g_rotate = 180;
+			ChangeWindowSize(hMenu);
+			sys.pCrtc->Resize(false);
+			break;
+		case IDM_VIEW_R270:
+			g_rotate = 270;
+			ChangeWindowSize(hMenu);
+			sys.pCrtc->Resize(false);
 			break;
 		case IDM_VIEW_STATUSBAR:
 			if (g_bStatusBar) {
@@ -2442,19 +2477,37 @@ void ChangeWindowSize(HMENU hMenu)
 	case 3:
 		mes = IDM_VIEW_X3;
 		break;
+	case 4:
+		mes = IDM_VIEW_X4;
+		break;
+	case 5:
+		mes = IDM_VIEW_X5;
+		break;
 	}
 	int client_h = BITMAP_H * g_viewScale;
 	int client_w = BITMAP_W * g_viewScale;
-	CheckMenuRadioItem(hMenu, IDM_VIEW_X1, IDM_VIEW_X3, mes, MF_BYCOMMAND);
+
+	if (g_rotate == 90 || g_rotate == 270) {
+		int tmp = client_h;
+		client_h = client_w;
+		client_w = tmp;
+	}
+
+	SetMenuItemState(hMenu);
+
 	DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
 	RECT rect;
 	if (g_bSquarePixel)
-		rect = { 0, 0, client_w, client_h + GetSystemMetrics(SM_CYMENU) + statusbarHeight };
-	else
-		rect = { 0, 0, (int)(client_w * REAL_WRATIO), client_h + GetSystemMetrics(SM_CYMENU) + statusbarHeight };
-	AdjustWindowRect(&rect, style, FALSE);
-	SetWindowPos(g_hMainWnd, HWND_TOP, 10, 10, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE);
-
+		rect = { 0, 0, client_w, client_h + statusbarHeight };
+	else {
+		if (g_rotate == 0 || g_rotate == 180)
+			rect = { 0, 0, (int)(client_w * REAL_WRATIO), client_h + statusbarHeight };
+		else 
+			rect = { 0, 0, client_w, (int)(client_h * REAL_WRATIO) + statusbarHeight };
+	}
+	
+	AdjustWindowRect(&rect, style, TRUE);
+	SetWindowPos(g_hMainWnd, HWND_TOP, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE);
 }
 
 
@@ -2468,13 +2521,19 @@ void SetMenuItemState(HMENU hMenu)
 	switch (g_viewScale)
 	{
 	case 1:
-		CheckMenuRadioItem(hMenu, IDM_VIEW_X1, IDM_VIEW_X3, IDM_VIEW_X1, MF_BYCOMMAND);
+		CheckMenuRadioItem(hMenu, IDM_VIEW_X1, IDM_VIEW_X5, IDM_VIEW_X1, MF_BYCOMMAND);
 		break;
 	case 2:
-		CheckMenuRadioItem(hMenu, IDM_VIEW_X1, IDM_VIEW_X3, IDM_VIEW_X2, MF_BYCOMMAND);
+		CheckMenuRadioItem(hMenu, IDM_VIEW_X1, IDM_VIEW_X5, IDM_VIEW_X2, MF_BYCOMMAND);
 		break;
 	case 3:
-		CheckMenuRadioItem(hMenu, IDM_VIEW_X1, IDM_VIEW_X3, IDM_VIEW_X3, MF_BYCOMMAND);
+		CheckMenuRadioItem(hMenu, IDM_VIEW_X1, IDM_VIEW_X5, IDM_VIEW_X3, MF_BYCOMMAND);
+		break;
+	case 4:
+		CheckMenuRadioItem(hMenu, IDM_VIEW_X1, IDM_VIEW_X5, IDM_VIEW_X4, MF_BYCOMMAND);
+		break;
+	case 5:
+		CheckMenuRadioItem(hMenu, IDM_VIEW_X1, IDM_VIEW_X5, IDM_VIEW_X5, MF_BYCOMMAND);
 		break;
 	}
 
@@ -2491,6 +2550,24 @@ void SetMenuItemState(HMENU hMenu)
 	}
 	else {
 		CheckMenuItem(hMenu, IDM_VIEW_SMOOTHING, MF_UNCHECKED);
+	}
+
+	switch (g_rotate)
+	{
+	case 0:
+		CheckMenuRadioItem(hMenu, IDM_VIEW_R0, IDM_VIEW_R270, IDM_VIEW_R0, MF_BYCOMMAND);
+		break;
+	case 90:
+		CheckMenuRadioItem(hMenu, IDM_VIEW_R0, IDM_VIEW_R270, IDM_VIEW_R90, MF_BYCOMMAND);
+		break;
+	case 180:
+		CheckMenuRadioItem(hMenu, IDM_VIEW_R0, IDM_VIEW_R270, IDM_VIEW_R180, MF_BYCOMMAND);
+		break;
+	case 270:
+		CheckMenuRadioItem(hMenu, IDM_VIEW_R0, IDM_VIEW_R270, IDM_VIEW_R270, MF_BYCOMMAND);
+		break;
+	default:
+		break;
 	}
 
 	if (g_bFpsCpu) {
@@ -2527,13 +2604,6 @@ void SetMenuItemState(HMENU hMenu)
 	else {
 		CheckMenuItem(hMenu, IDM_FDD_DETACHFDD, MF_UNCHECKED);
 	}
-
-	//if (_tcslen(g_pFdRomFile) == 0) {
-	//	EnableMenuItem(hMenu, 1, MF_BYPOSITION | MF_GRAYED);
-	//}
-	//else {
-	//	EnableMenuItem(hMenu, 1, MF_BYPOSITION | MF_ENABLED);
-	//}
 
 	SetMenuItemForRecentFiles();
 	SetMenuItemForStateSaveLoad();
