@@ -41,8 +41,10 @@ public:
 	~Mn1271();
 	bool Init(void);
 	void TickTimerCounter(int cycles);
+	uint8_t IORead(uint8_t reg);
 	uint8_t Read(uint8_t reg);
 	uint8_t ReadForDebug(uint8_t r);
+	void IOWrite(uint8_t r, uint8_t val);
 	void Write(uint8_t ret, uint8_t val);
 	void AssertIrq(int type);
 	vector<uint8_t>* saveData = nullptr;
@@ -62,6 +64,7 @@ public:
 	bool GetRemoteStatus();
 	bool GetReadStatus();
 	bool GetWriteStatus();
+	bool IsCheatLoading();
 
 	bool debugTcaEnable = true;
 	bool debugTcbEnable = true;
@@ -95,7 +98,6 @@ protected:
 	void Reg1f_write(uint8_t val);
 	void SetIrqMask1(int bit, int value);
 	void SetIrqMask2(int bit, int value);
-
 	void Reg7_read();
 
 #ifdef _ANDROID

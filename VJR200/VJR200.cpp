@@ -49,7 +49,8 @@ const int CPU_SPEED_MAX = 1000;
 const int BREAKPOINT_NUM = 12;
 const int RW_BREAKPOINT_NUM = 5;
 const TCHAR* APPDATA_PATH = _T("\\FIND_JR\\VJR200\\");
-const int CEREAL_VER = 2;
+const unsigned int CEREAL_VER = 3;
+const unsigned int MINIMUM_READABLE_VERSION = 2;
 const int JUMP_HISTORY_SIZE = 24;
 
 // グラフキーボード用テーブル
@@ -1098,7 +1099,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				else {
 					MessageBeep(MB_ICONEXCLAMATION);
-					MessageBox(NULL, g_strTable[(int)Msg::Invalid_file_format], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
+					MessageBox(g_hMainWnd, g_strTable[(int)Msg::Invalid_file_format], g_strTable[(int)Msg::Caution], MB_OK | MB_ICONEXCLAMATION);
 					break;
 				}
 			}
@@ -2802,7 +2803,7 @@ void AddRecentFiles(const TCHAR* str,  int mode)
 	{
 	case 0: // CJR,JR2 Set
 		for (unsigned int i = 0; i < g_rFilesforCJRSet.size(); ++i) {
-			if (_tcscmp(g_rFilesforCJRSet[i].data(), tmpBuf) == 0) {
+			if (_tcsicmp(g_rFilesforCJRSet[i].data(), tmpBuf) == 0) {
 				g_rFilesforCJRSet.erase(g_rFilesforCJRSet.begin() + i);
 			}
 		}
@@ -2812,7 +2813,7 @@ void AddRecentFiles(const TCHAR* str,  int mode)
 		break;
 	case 1: // Quick Load
 		for (unsigned int i = 0; i < g_rFilesforQLoad.size(); ++i) {
-			if (_tcscmp(g_rFilesforQLoad[i].data(), tmpBuf) == 0) {
+			if (_tcsicmp(g_rFilesforQLoad[i].data(), tmpBuf) == 0) {
 				g_rFilesforQLoad.erase(g_rFilesforQLoad.begin() + i);
 			}
 		}
@@ -2941,6 +2942,20 @@ void SetMenuItemForStateSaveLoad()
 }
 
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// 文字列の一部を抽出
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Substring(TCHAR* source, int start, int length, TCHAR* destination)
+{
+	_tcsncpy(destination, source + start, length);
+	destination[length] = _T('\0'); // 終端文字を追加
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // 「最近使ったファイル」をメニューに反映
@@ -2951,11 +2966,14 @@ void SetMenuItemForRecentFiles()
 	HMENU hMenu, hFileMenu, hRecentFileMenu;
 	MENUITEMINFO mii;
 	TCHAR buf[MAX_PATH] = {};
+	TCHAR pathBuff[MAX_PATH] = {}, pathSub1[30] = {}, pathSub2[30] = {};
 	hMenu = GetMenu(g_hMainWnd);
 	hFileMenu = GetSubMenu(hMenu, 0);
 	hRecentFileMenu = GetSubMenu(hFileMenu, RFILES_SUBMENU_POS);
 
+	// マウント
 	for (unsigned int i = 0; i < g_rFilesforCJRSet.size(); ++i) {
+		_tcscpy(pathBuff, g_rFilesforCJRSet[i].data());
 		TCHAR* fname;
 		fname = PathFindFileName(g_rFilesforCJRSet[i].data());
 		mii.dwTypeData = buf;
@@ -2971,14 +2989,26 @@ void SetMenuItemForRecentFiles()
 			wsprintf(buf, _T("&%d.%s\tCtrl+Alt+%d"), idx, _T("-----"), idx);
 		}
 		else {
-			wsprintf(buf, _T("&%d.%s\tCtrl+Alt+%d"), idx, fname, idx);
+			PathRemoveFileSpec(pathBuff);
+			if (_tcslen(pathBuff) <= 20) {
+				wsprintf(buf, _T("&%d.%s%s%s\tCtrl+Alt+%d"), idx, pathBuff, _T("\\"), fname, idx);
+			}
+			else {
+				Substring(pathBuff, 0, 10, pathSub1);
+				Substring(pathBuff,(int)(_tcslen(pathBuff) - 10) , 10, pathSub2);
+				wsprintf(buf, _T("&%d.%s%s%s%s%s\tCtrl+Alt+%d"), 
+					idx, pathSub1, _T("..."), pathSub2, _T("\\"), fname, idx);
+			}
 		}
+
 		mii.dwTypeData = buf;
 		SetMenuItemInfo(hRecentFileMenu, IDM_FILE_RFILES_SETCJR0 + i, FALSE, &mii);
 		ZeroMemory(&mii, sizeof(mii));
 	}
 
+	// 高速ロード
 	for (unsigned int i = 0; i < g_rFilesforQLoad.size(); ++i) {
+		_tcscpy(pathBuff, g_rFilesforQLoad[i].data());
 		TCHAR* fname;
 		TCHAR head_array[] = _T("abcdefghij");
 		TCHAR head[] = _T("a");
@@ -2997,14 +3027,25 @@ void SetMenuItemForRecentFiles()
 			wsprintf(buf, _T("&%s.%s\tShift+Alt+%d"), head, _T("-----"), idx);
 		}
 		else {
-			wsprintf(buf, _T("&%s.%s\tShift+Alt+%d"), head, fname, idx);
+			PathRemoveFileSpec(pathBuff);
+			if (_tcslen(pathBuff) <= 20) {
+				wsprintf(buf, _T("&%s.%s%s%s\tShift+Alt+%d"), head, pathBuff, _T("\\"), fname, idx);
+			}
+			else {
+				Substring(pathBuff, 0, 10, pathSub1);
+				Substring(pathBuff, (int)(_tcslen(pathBuff) - 10), 10, pathSub2);
+				wsprintf(buf, _T("&%s.%s%s%s%s%s\tShift+Alt+%d"),
+					head, pathSub1, _T("..."), pathSub2, _T("\\"), fname, idx);
+			}
 		}
+
 		mii.dwTypeData = buf;
 		SetMenuItemInfo(hRecentFileMenu, IDM_FILE_RFILES_QLOAD0 + i, FALSE, &mii);
 		ZeroMemory(&mii, sizeof(mii));
 	}
 
 	DrawMenuBar(g_hMainWnd);
+	settingXml.Write();
 }
 
 

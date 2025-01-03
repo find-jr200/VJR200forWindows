@@ -28,7 +28,8 @@ extern const int RW_BREAKPOINT_NUM;
 extern const TCHAR* APPDATA_PATH;
 extern const uint8_t g_gcharCode1[][14];
 extern const uint8_t g_gcharCode2[][14];
-extern const int CEREAL_VER;
+extern const unsigned int CEREAL_VER;
+extern const unsigned int MINIMUM_READABLE_VERSION;
 extern const int JUMP_HISTORY_SIZE;
 
 

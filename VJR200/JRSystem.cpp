@@ -344,7 +344,7 @@ void JRSystem::Load()
 		throw(1);
 #else
 		stateLoad = -1;
-		MessageBox(g_hMainWnd, _T("ステートロードに失敗しました"), _T("エラー"), MB_OK);
+		MessageBox(g_hMainWnd, g_strTable[(int)Msg::Failed_to_load_the_state_file], g_strTable[(int)Msg::Error], MB_OK | MB_ICONEXCLAMATION);
 #endif
 
 

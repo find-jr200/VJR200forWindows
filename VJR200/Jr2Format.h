@@ -36,7 +36,7 @@ public:
 protected:
 	static const uint8_t CHECK_ARRAY[12];
 	static const int DATA_BLOCK = 16;
-	static const int DATA_CYCLE = 280; // 1データあたりのCPUサイクル数
+	static const int DATA_CYCLE = 279; // 1データあたりのCPUサイクル数
 	static const int BLANK_LENGTH = 500;
 
 	TCHAR fileName[MAX_PATH];

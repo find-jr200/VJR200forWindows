@@ -90,24 +90,24 @@ bool Mn1544::Init()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// /KSTATの処理
+// /KTEST, KACKの処理
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void Mn1544::SetKeyState(uint8_t val)
+void Mn1544::SetKeyTest(uint8_t val)
 {
+	const int KTEST = 2, KACK = 1;
+
     if (!bInitialized) { // 電源投入時
         assert(pointer >= 0 && pointer =< FONTSIZE);
-        if (prepreKtest != 0 && preKtest == 0 && (val & 2) != 0 && !bKtested) {
+        if (prepreKtest != 0 && preKtest == 0 && (val & KTEST) != 0 && !bKtested) {
             bKtested = true;
-            sys.pAddress->WriteByte(0xc801, fontData[pointer]);
-            sys.pAddress->WriteByte(0xc809, 0x10);
-            ++pointer;
+			SendKeycodeLater(fontData[pointer++]);
+
         }
         else {
-            if (prepreKack != 0 && preKack == 0 && ((val & 1) != 0)) {
-                sys.pAddress->WriteByte(0xc801, fontData[pointer]);
-                sys.pAddress->WriteByte(0xc809, 0x10);
-                ++pointer;
+            if (prepreKack != 0 && preKack == 0 && ((val & KACK) != 0)) {
+				SendKeycodeLater(fontData[pointer++]);
+
             }
         }
         if (pointer == 2049) {
@@ -116,37 +116,48 @@ void Mn1544::SetKeyState(uint8_t val)
             pointer = 0;
         }
         prepreKtest = preKtest;
-        preKtest = (val & 0x02);
+        preKtest = (val & KTEST);
         prepreKack = preKack;
-        preKack = (val & 0x01);
+        preKack = (val & KACK);
 
     }
     else { // 通常時
         assert(pointer >= 0 && pointer =< 2);
-        if (prepreKtest != 0 && preKtest == 0 && (val & 2) != 0 && !bScanning) {
+		if (prepreKtest != 0 && preKtest == 0 && (val & KTEST) != 0 && !bScanning) {
             ScanKeyAndPad();
             bScanning = true;
-            sys.pAddress->WriteByte(0xc801, scanBuff[pointer]);
-            sys.pAddress->WriteByte(0xc809, 0x10);
-            ++pointer;
+
+			SendKeycodeLater(scanBuff[pointer++]);
         }
         else {
-            if (prepreKack != 0 && preKack == 0 && ((val & 1) != 0) && bScanning) {
-                sys.pAddress->WriteByte(0xc801, scanBuff[pointer]);
-                sys.pAddress->WriteByte(0xc809, 0x10);
-                ++pointer;
+            if (prepreKack != 0 && preKack == 0 && ((val & KACK) != 0) && bScanning) {
+				SendKeycodeLater(scanBuff[pointer++]);
             }
         }
+
         if (pointer == 3) {
             bScanning = false;
             pointer = 0;
         }
+
         prepreKtest = preKtest;
-        preKtest = (val & 2);
+        preKtest = (val & KTEST);
         prepreKack = preKack;
-        preKack = (val & 1);
+        preKack = (val & KACK);
     }
     return;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// キー入力の後、時間をおいてキーコードを書き込み割り込みを実行する
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Mn1544::SendKeycodeLater(int code)
+{
+	keycode = code;
+	irqCounter = IRQ_WAIT_TIME;
 }
 
 
@@ -174,8 +185,7 @@ uint8_t Mn1544::KeyIn(int w, int l)
         lastKeyCode = c;
 #endif
         if (c != 0) {
-            sys.pAddress->WriteByte(0xc801, c);
-            sys.pAddress->WriteByte(0xc809, 0x10);
+			SendKeycodeLater(c);
         }
     }
 
@@ -416,11 +426,21 @@ void Mn1544::TickCounter(int cycles)
                 typeWord = nullptr;
                 return;
             }
-            sys.pAddress->WriteByte(0xc801, keyin);
-            sys.pMn1271->AssertIrq((int)(IrqType::KON));
+			SendKeycodeLater(keyin);
             dCounter = 0;
         }
     }
+
+	if (irqCounter != 0) {
+		irqCounter -= cycles;
+		if (irqCounter <= 0) {
+			sys.pMn1271->IOWrite(1, keycode);
+			sys.pMn1271->AssertIrq((int)(IrqType::KON));
+
+			irqCounter = 0;
+			keycode = 0;
+		}
+	}
 }
 
 
@@ -719,7 +739,8 @@ uint8_t Mn1544::ConvertKeyCode(int w)
 
 
 	if (c == 0 && bCtrl == true) {
-		if ((sys.pAddress->ReadByte(0xc803) & 0x80) != 0 || bShift == true) {
+		if (((sys.pMn1271->Read(3) & 0x80) == 0 && bShift == true) ||
+			((sys.pMn1271->Read(3) & 0x80) != 0)) {
 			// ニュートラルモード
 			if (w == 'A') c = 0x01;
 			if (w == 'B') c = 0x02;

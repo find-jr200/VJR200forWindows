@@ -25,10 +25,11 @@ public:
 #endif
 
     static const int FONTSIZE = 2048;
+    static const int IRQ_WAIT_TIME = 100;
 
     Mn1544();
     ~Mn1544();
-    void SetKeyState(uint8_t reg);
+    void SetKeyTest(uint8_t reg);
     bool Init();
     void TickCounter(int cycles);
     void StartQuickType(TCHAR* data);
@@ -36,7 +37,6 @@ public:
     uint8_t KeyIn(int w, int l);
     uint8_t KeyScan();
     void AutoType(const char w[]);
-	void MacroType(int index);
     uint8_t fontData[FONTSIZE + 1];
     bool IsQuickType() { return bQuickType; };
     template <class Archive>
@@ -52,7 +52,7 @@ public:
 
 protected:
 #ifndef _ANDROID
-#define CHAR_BYTE 1
+#define CHAR_BYTE 3
 #else
 #define CHAR_BYTE 3
 #endif
@@ -66,6 +66,7 @@ protected:
     void ScanKeyAndPad();
     void ConvertRKana(int key);
     void ClearRomajiKeys();
+    void SendKeycodeLater(int code);
 
     uint8_t scanBuff[3];
     int pointer = 0;
@@ -94,6 +95,8 @@ protected:
     int wordLen, typeCount;
     int preCpuScale;
     bool bQuickType = false;
+    int irqCounter = 0;
+    int keycode = 0;
 
     // Androidでのみ使用
     int lastKeyCode;
@@ -102,14 +105,28 @@ protected:
 template<class Archive>
 inline void Mn1544::serialize(Archive & ar, std::uint32_t const version)
 {
-    ar(cereal::binary_data(scanBuff, sizeof(uint8_t) * 3));
-    ar(pointer, joystick1, joystick2, mode, bInitialized, bScaned, bScanning, bKtested, bBreakOn, bKeyRepeat);
-    ar(preKtest, preKack, prepreKtest, prepreKack);
-    ar(cereal::binary_data(keys, sizeof(char) * 4));
-    ar(cereal::binary_data(errStr, sizeof(char) * 4));
-    ar(curKeysPos);
-    ar(bAutoTyping, dCounter, interval, wordLen, typeCount, preCpuScale, bQuickType);
-	// Androidでのみ使用
-    ar(lastKeyCode);
+    if (version >= 3) {
+        ar(cereal::binary_data(scanBuff, sizeof(uint8_t) * 3));
+        ar(pointer, joystick1, joystick2, mode, bInitialized, bScaned, bScanning, bKtested, bBreakOn, bKeyRepeat);
+        ar(preKtest, preKack, prepreKtest, prepreKack);
+        ar(cereal::binary_data(keys, sizeof(char) * 4));
+        ar(cereal::binary_data(errStr, sizeof(char) * 4));
+        ar(curKeysPos);
+        ar(bAutoTyping, dCounter, interval, wordLen, typeCount, preCpuScale, bQuickType);
+        ar(irqCounter, keycode);
+        // Androidでのみ使用
+        ar(lastKeyCode);
+    }
+    else {
+        ar(cereal::binary_data(scanBuff, sizeof(uint8_t) * 3));
+        ar(pointer, joystick1, joystick2, mode, bInitialized, bScaned, bScanning, bKtested, bBreakOn, bKeyRepeat);
+        ar(preKtest, preKack, prepreKtest, prepreKack);
+        ar(cereal::binary_data(keys, sizeof(char) * 4));
+        ar(cereal::binary_data(errStr, sizeof(char) * 4));
+        ar(curKeysPos);
+        ar(bAutoTyping, dCounter, interval, wordLen, typeCount, preCpuScale, bQuickType);
+        // Androidでのみ使用
+        ar(lastKeyCode);
+    }
 }
 #endif

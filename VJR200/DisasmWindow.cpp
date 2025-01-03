@@ -24,7 +24,7 @@ const FLOAT DisasmWindow::msc_fontSize = 14;
 
 const wchar_t *const DisasmWindow::nimonic[256] = {
 	L"NA",L"NOP",L"NA",L"NA",L"NA",L"NA",L"TAP",L"TPA",L"INX",L"DEX",L"CLV",L"SEV",L"CLC",L"SEC",L"CLI",L"SEI",
-	L"SBA",L"CBA",L"NA",L"NA",L"NA",L"NA",L"TAB",L"TBA",L"NA(DAA)",L"DAA",L"NA(ABA)",L"ABA",L"NA",L"NA",L"NA",L"NA",
+	L"SBA",L"CBA",L"NA",L"NA",L"NA(NBA)",L"NA",L"TAB",L"TBA",L"NA(DAA)",L"DAA",L"NA(ABA)",L"ABA",L"NA",L"NA",L"NA",L"NA",
 	L"BRA",L"NA",L"BHI",L"BLS",L"BCC",L"BCS",L"BNE",L"BEQ",L"BVC",L"BVS",L"BPL",L"BMI",L"BGE",L"BLT",L"BGT",L"BLE",
 	L"TSX",L"INS",L"PULA",L"PULB",L"DES",L"TXS",L"PSHA",L"PSHB",L"NA",L"RTS",L"NA(RTI)",L"RTI",L"NA",L"NA",L"WAI",L"SWI",
 	L"NEGA",L"NA",L"NA(COMA)",L"COMA",L"LSRA",L"NA",L"RORA",L"ASRA",L"ASLA",L"ROLA",L"DECA",L"NA(DECA)",L"INCA",L"TSTA",L"NA",L"CLRA",

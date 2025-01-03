@@ -332,61 +332,61 @@ void Mn1271::AssertIrq(int type)
 			reg[0x1c] |= (uint8_t)Reg1c::PI0_STAT;
 			sys.pCpu->irq();
 		}
-							 break;
+		break;
 	case (int)(IrqType::SYSINT) :
 		if (reg[0x1e] & (uint8_t)Reg1e::PI1_MASK) {
 			reg[0x1c] |= (uint8_t)Reg1c::PI1_STAT;
 			sys.pCpu->irq();
 		}
-								break;
+		break;
 	case (int)(IrqType::USERINT) :
 		if (reg[0x1e] & (uint8_t)Reg1e::PI2_MASK) {
 			reg[0x1c] |= (uint8_t)Reg1c::PI2_STAT;
 			sys.pCpu->irq();
 		}
-								 break;
+		break;
 	case (int)(IrqType::SERIAL) :
 		if (reg[0x1e] & (uint8_t)Reg1e::SERIAL_MASK) {
 			reg[0x1c] |= (uint8_t)Reg1c::SERIAL_STAT;
 			sys.pCpu->irq();
 		}
-								break;
+		break;
 	case (int)(IrqType::TCA) :
 		if (reg[0x1f] & (uint8_t)Reg1f::TCA_MASK) {
 			reg[0x1d] |= (uint8_t)Reg1d::TCA_STAT;
 			sys.pCpu->irq();
 		}
-							 break;
+		 break;
 	case (int)(IrqType::TCB) :
 		if (reg[0x1f] & (uint8_t)Reg1f::TCB_MASK) {
 			reg[0x1d] |= (uint8_t)Reg1d::TCB_STAT;
 			sys.pCpu->irq();
 		}
-							 break;
+		break;
 	case (int)(IrqType::TCC) :
 		if (reg[0x1f] & (uint8_t)Reg1f::TCC_MASK) {
 			reg[0x1d] |= (uint8_t)Reg1d::TCC_STAT;
 			sys.pCpu->irq();
 		}
-							 break;
+		break;
 	case (int)(IrqType::TCD) :
 		if (reg[0x1f] & (uint8_t)Reg1f::TCD_MASK) {
 			reg[0x1d] |= (uint8_t)Reg1d::TCD_STAT;
 			sys.pCpu->irq();
 		}
-							 break;
+		break;
 	case (int)(IrqType::TCE) :
 		if (reg[0x1f] & (uint8_t)Reg1f::TCE_MASK) {
 			reg[0x1d] |= (uint8_t)Reg1d::TCE_STAT;
 			sys.pCpu->irq();
 		}
-							 break;
+		break;
 	case (int)(IrqType::TCF) :
 		if (reg[0x1f] & (uint8_t)Reg1f::TCF_MASK) {
 			reg[0x1d] |= (uint8_t)Reg1d::TCF_STAT;
 			sys.pCpu->irq();
 		}
-							 break;
+		break;
 	}
 	SetIrqFlag();
 }
@@ -409,6 +409,18 @@ void Mn1271::SetIrqFlag()
 	}
 }
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// MN1271に接続された周辺デバイスからのレジスタ読み出し
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+uint8_t Mn1271::IORead(uint8_t r)
+{
+	if (r < 0 || r > 0x1d) return 0;
+
+	return reg[r];
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -462,6 +474,7 @@ uint8_t Mn1271::Read(uint8_t r)
 		break;
 	case 0xa:
 		b = reg[r];
+		reg[r] = 0;
 		break;
 	case 0xb:
 		b = reg[r];
@@ -690,6 +703,21 @@ void Mn1271::Reg7_read()
 }
 
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// MN1271に接続された周辺デバイスからのレジスタ書き込み
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Mn1271::IOWrite(uint8_t r, uint8_t val)
+{
+	if (r < 0 || r > 0x1d) return;
+
+	reg[r] = val;
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // レジスタ書き込み
@@ -705,29 +733,37 @@ void Mn1271::Write(uint8_t r, uint8_t val)
 		reg[r] = val;
 		break;
 	case 1:
-		reg[r] = val;
+	{
+		reg[r] = val & reg[0];
 		break;
+	}
 	case 2:
 		reg[r] = val;
 		break;
 	case 3:
-		reg[r] = val;
+	{
+		reg[r] = val & reg[2];
 		Reg3_write(val);
 		break;
+	}
 	case 4:
 		reg[r] = val;
 		break;
 	case 5:
-		reg[r] = val;
+	{
+		reg[r] = (val & reg[4]) | ~reg[4];
 		Reg5_write(val);
 		break;
+	}
 	case 6:
 		reg[r] = val;
 		break;
 	case 7:
-		reg[r] = val;
+	{
+		reg[r] = val & reg[6];
 		Reg7_write(val);
 		break;
+	}
 	case 8:
 		reg[r] = val & 0x77;
 		break;
@@ -913,7 +949,7 @@ void Mn1271::SetIrqMask2(int bit, int value)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void Mn1271::Reg3_write(uint8_t val)
 {
-	sys.pMn1544->SetKeyState(val);
+	sys.pMn1544->SetKeyTest(val);
 }
 
 
@@ -1626,6 +1662,13 @@ bool Mn1271::GetWriteStatus()
 	return bTmp;
 }
 
+bool Mn1271::IsCheatLoading()
+{
+	if (g_bOverClockLoad && bRemoteOn && !bSaving)
+		return true;
+	else
+		return false;
+}
 
 
 #ifdef _ANDROID

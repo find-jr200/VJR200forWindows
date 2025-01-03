@@ -113,7 +113,7 @@ void Jr2Format::TickCounter(int c)
 
 	counter += c;
 	if (counter >= DATA_CYCLE) {
-		counter = 0;
+		counter -= DATA_CYCLE;
 		pointer.Next();
 	}
 }

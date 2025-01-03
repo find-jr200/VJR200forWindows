@@ -3,7 +3,7 @@
 const m6800_cpu_device::op_func m6800_cpu_device::m6800_insn[0x100] = {
 	&m6800_cpu_device::illegal,&m6800_cpu_device::nop,    &m6800_cpu_device::illegal,&m6800_cpu_device::illegal,&m6800_cpu_device::illegal,&m6800_cpu_device::illegal,&m6800_cpu_device::tap,    &m6800_cpu_device::tpa,
 	&m6800_cpu_device::inx,    &m6800_cpu_device::dex,    &m6800_cpu_device::clv,    &m6800_cpu_device::sev,    &m6800_cpu_device::clc,    &m6800_cpu_device::sec,    &m6800_cpu_device::cli,    &m6800_cpu_device::sei,
-	&m6800_cpu_device::sba,    &m6800_cpu_device::cba,    &m6800_cpu_device::illegal,&m6800_cpu_device::illegal,&m6800_cpu_device::illegal,&m6800_cpu_device::illegal,&m6800_cpu_device::tab,    &m6800_cpu_device::tba,
+	&m6800_cpu_device::sba,    &m6800_cpu_device::cba,    &m6800_cpu_device::illegal,&m6800_cpu_device::illegal,&m6800_cpu_device::nba     ,&m6800_cpu_device::illegal,&m6800_cpu_device::tab,    &m6800_cpu_device::tba,
 	&m6800_cpu_device::daa,    &m6800_cpu_device::daa,    &m6800_cpu_device::aba,    &m6800_cpu_device::aba,    &m6800_cpu_device::illegal,&m6800_cpu_device::illegal,&m6800_cpu_device::illegal,&m6800_cpu_device::illegal,
 	&m6800_cpu_device::bra,    &m6800_cpu_device::brn,    &m6800_cpu_device::bhi,    &m6800_cpu_device::bls,    &m6800_cpu_device::bcc,    &m6800_cpu_device::bcs,    &m6800_cpu_device::bne,    &m6800_cpu_device::beq,
 	&m6800_cpu_device::bvc,    &m6800_cpu_device::bvs,    &m6800_cpu_device::bpl,    &m6800_cpu_device::bmi,    &m6800_cpu_device::bge,    &m6800_cpu_device::blt,    &m6800_cpu_device::bgt,    &m6800_cpu_device::ble,

@@ -3,6 +3,7 @@
 #ifndef __SERIALIZE_GLOBAL_H__
 #define __SERIALIZE_GLOBAL_H__
 #include <cereal/cereal.hpp>
+#include "VJR200.h"
 
 class SerializeGlobal
 {
@@ -58,7 +59,8 @@ public:
 	template<class Archive>
 	inline void load(Archive & ar, std::uint32_t const version)
 	{
-		if (version < 2) throw(g_strTable[(int)Msg::The_state_file_is_old_and_cant_be_used]);
+		if (version < MINIMUM_READABLE_VERSION) throw(g_strTable[(int)Msg::The_state_file_is_old_and_cant_be_used]);
+        if (version > CEREAL_VER) throw(g_strTable[(int)Msg::Failed_to_load_the_state_file]);
 
 		ar(cpuScale, dramWait, bSoundOn);
 		g_cpuScale = cpuScale;

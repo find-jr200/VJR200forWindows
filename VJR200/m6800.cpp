@@ -114,10 +114,6 @@ enum
 #endif
 
 
-#if 0
-static void hd63701_trap_pc();
-#endif
-
 #define pPPC    m_ppc
 #define pPC     m_pc
 #define pS      m_s
@@ -424,7 +420,7 @@ const uint8_t m6800_cpu_device::cycles_6800[256] =
         {
                     /* 0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F */
                 /*0*/ XX, 2,XX,XX,XX,XX, 2, 2, 4, 4, 2, 2, 2, 2, 2, 2,
-                /*1*/  2, 2,XX,XX,XX,XX, 2, 2, 2, 2, 2, 2,XX,XX,XX,XX,
+                /*1*/  2, 2,XX,XX, 2,XX, 2, 2, 2, 2, 2, 2,XX,XX,XX,XX,
                 /*2*/  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
                 /*3*/  4, 4, 4, 4, 4, 4, 4, 4,XX, 5,10,10,XX,XX, 9,12,
                 /*4*/  2,XX, 2, 2, 2,XX, 2, 2, 2, 2, 2, 2, 2, 2,XX, 2,
@@ -655,7 +651,7 @@ int m6800_cpu_device::run(int steps)
 			g_prePC = PC;
 			PC++;
             (this->*m_insn[ireg])();
-            c = m_cycles[ireg] + g_dramWait;
+            c = m_cycles[ireg] + g_dramWait - (sys.pMn1271->IsCheatLoading() ? 2 : 0);
         }
 
         increment_counter(c);

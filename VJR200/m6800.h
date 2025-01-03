@@ -286,6 +286,7 @@ protected:
     void lsrb();
     void lsrd();
     void mul();
+    void nba();
     void neg_ex();
     void neg_ix();
     void nega();

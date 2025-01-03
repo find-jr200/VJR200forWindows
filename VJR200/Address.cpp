@@ -231,7 +231,6 @@ uint8_t Address::ReadByteForDebug(uint16_t address)
             return memory[address];
             break;
         case DevType::Ram:
-            if (address >= 0 && address <= 0xbfff) ++g_dramWait;
             return memory[address];
             break;
         case DevType::Mn1271:

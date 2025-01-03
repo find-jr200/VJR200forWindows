@@ -4,7 +4,7 @@
 //
 // class AnalyzeWave
 // JR-200が書き出すCMT波形をプログラム・データに変換するクラス
-//
+// SAVE,MSAVE時にCJR保存するときのみ呼ばれる
 // このクラスはJR2Rescue用に書いたものを移植しているので、この用途には無駄が多い（でも面倒だから書きかえない）
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -189,7 +189,6 @@ bool AnalyzeWave::AnalyzeWavData()
 {
 	int data = 0;
 	int halfWaveCount = 0;
-	int cheksumValue;
 	bool retVal = false;
 
 	SetConvertedList();
@@ -252,8 +251,8 @@ bool AnalyzeWave::AnalyzeWavData()
 
 		if (blockCount == 0 && cjrList.size() > 23)
 		{
-			cheksumValue = (int)cjrList[23];
-			if (blockCount == 0 && cheksumValue == 0) bparam.SetBaudRate(HIGH); // ヘッダブロックをみてbaud rateを変更
+			if ((int)cjrList[23] == 0) 
+				bparam.SetBaudRate(HIGH); // ヘッダブロックをみてbaud rateを変更
 		}
 		else {
 			if (blockCount == 0 && cjrList.size() <= 23)

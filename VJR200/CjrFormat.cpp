@@ -415,8 +415,6 @@ bool CjrFormat::SetLoadDataBlock(int fileSize)
 {
 	if (cjrData.size() == 0) return false;
 
-	AdjustBaudRate(0); //////////////////// 2400baudに設定
-
 	int c = 0, p = 0, blockNo, dataSize;
 	loadDataBlock.push_back(new vector<uint8_t>());
 	if (cjrData[2] == 0) {
@@ -453,6 +451,10 @@ int CjrFormat::GetLoadData(uint8_t* loadData)
 	int p = 0;
 	int count = 0;
 	int sign = 1;
+	int baudRate = 0;
+
+	if (cjrData[2] == 0 && cjrData[23] != 0)
+		baudRate = 1;
 
 	while (itBlock != loadDataBlock.end())
 	{
@@ -503,8 +505,8 @@ int CjrFormat::GetLoadData(uint8_t* loadData)
 						}
 					}
 					else {
-						for (int l = 0; l < 2; ++l) { // 1ビットのループ
-							*(loadData + p) = wg.Get(0, sign);
+						for (int l = 0; l < 2 + (baudRate * 6); ++l) { // 1ビットのループ
+							*(loadData + p) = wg.Get(baudRate, sign);
 							++p;
 						}
 					}

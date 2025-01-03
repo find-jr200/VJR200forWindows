@@ -195,7 +195,12 @@ OP_HANDLER( undoc2 )
 }
 
 
-/* $14 ILLEGAL */
+/* $14 UNDOCUMENTED */
+OP_HANDLER(nba)
+{
+	A = A & B;
+	CLR_NZV; SET_NZ8(A);
+}
 
 /* $15 ILLEGAL */
 
