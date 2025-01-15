@@ -1259,7 +1259,7 @@ INT_PTR CALLBACK DlgVGraphKeybProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 			uint8_t c = g_gcharCode1[y][x];
 			if (c == 0)
 				return (INT_PTR)TRUE;
-			sys.pAddress->WriteByte(0xc801, c);
+			sys.pMn1271->IOWrite(1, c);
 			sys.pMn1271->AssertIrq((int)(IrqType::KON));
 		}
 		else {
@@ -1273,7 +1273,7 @@ INT_PTR CALLBACK DlgVGraphKeybProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 			uint8_t c = g_gcharCode2[y][x];
 			if (c == 0)
 				return (INT_PTR)TRUE;
-			sys.pAddress->WriteByte(0xc801, c);
+			sys.pMn1271->IOWrite(1, c);
 			sys.pMn1271->AssertIrq((int)(IrqType::KON));
 		}
 		return (INT_PTR)TRUE;
